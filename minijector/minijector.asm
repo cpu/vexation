@@ -454,8 +454,8 @@ mapfile:
 ; If we're here something has gone wrong or there is no more work to do.
 ; Try to use ExitProcess to terminate gracefully.
 error:
-exit: 
-  call ExitProcess, 0h, eax
+exit:
+  call ExitProcess, 0h
 
 ; Use the `$` assembler macro for the current address at this point in the assembly
 ; process to calculate the virus size by subtracting the start address label.
