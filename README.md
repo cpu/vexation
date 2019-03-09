@@ -17,3 +17,18 @@ As described in the accompanying blog post this is not a complete working PE
 file infector. The entry point of the infected program is not updated so the
 injected copy is fully inert. The virus code is not position independent and
 does not find `kernel32.dll` API addresses at runtime.
+
+## pijector
+
+Accompanying post: **TBA**
+
+"pijector" (position independent (self-in)jector) is a continuation of
+Minijector. `pijector.exe` doesn't use a separate data section for its variable
+data and instead modifies offsets within the code section. The offsets are
+adjusted by the overall delta offset to make the variable references position
+independent.
+
+As described in the accompanying blog post this is *still* not a complete
+working PE file infector. The entry point of the infected program is not updated
+so the injected copy is fully inert. The virus code also does not find
+`kernel32.dll` API addresses at runtime.
