@@ -1,0 +1,99 @@
+Turbo Dump  Version 4.2.16.1 Copyright (c) 1988, 1996 Borland International
+                   Display of File PIJECTOR.EXE
+
+Old Executable Header
+
+DOS File Size                                       2000h  (  8192. )
+Load Image Size                                      210h  (   528. )
+Relocation Table entry count                          0000h  (     0. )
+Relocation Table address                              0040h  (    64. )
+Size of header record      (in paragraphs)            0004h  (     4. )
+Minimum Memory Requirement (in paragraphs)            000Fh  (    15. )
+Maximum Memory Requirement (in paragraphs)            FFFFh  ( 65535. )
+File load checksum                                    0000h  (     0. )
+Overlay Number                                        001Ah  (    26. )
+
+Initial Stack Segment  (SS:SP)			  0000:00B8
+Program Entry Point    (CS:IP)			  0000:0000
+
+
+Portable Executable (PE) File
+
+Header base: 00000100
+
+CPU type                 80386
+Flags                    818E [ executable 32bit ]
+DLL flags                0000 [ ]
+Linker Version           2.19
+Time stamp               76554E69
+O/S Version              1.0
+User Version             0.0
+Subsystem Version        3.10
+Subsystem                0003 [ Windows character ]
+Object count             00000004
+Symbols offset           00000000
+Symbols count            00000000
+Optional header size     00E0
+Magic #                  10B
+Code size                00000800
+Init Data size           00000400
+Uninit Data size         00000000
+Entry RVA                00001000
+Image base               00400000
+Code base                00001000
+Data base                00002000
+Object/File align        00001000/00000200
+Reserved                 00000000
+Image size               00005000
+Header size              00000400
+Checksum                 00000000
+Stack reserve/commit     00100000/00002000
+Heap reserve/commit      00100000/00001000
+Number interesting RVAs  00000010
+Name                   RVA       Size  
+------------------  --------  --------
+Exports             00000000  00000000
+Imports             00003000  0000012A
+Resources           00000000  00000000
+Exceptions          00000000  00000000
+Security            00000000  00000000
+Fixups              00004000  0000009C
+Debug               00000000  00000000
+Description         00000000  00000000
+TLS                 00000000  00000000
+Callbacks           00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+
+Object table:
+#   Name      VirtSize    RVA     PhysSize  Phys off  Flags   
+--  --------  --------  --------  --------  --------  --------
+01  CODE      00001000  00001000  00000800  00000600  60000020 [CER]
+02  DATA      00001000  00002000  00000000  00000E00  C0000040 [IRW]
+03  .idata    00001000  00003000  00000200  00000E00  C0000040 [IRW]
+04  .reloc    00001000  00004000  00000200  00001000  50000040 [ISR]
+
+Key to section flags:
+  C - contains code
+  E - executable
+  I - contains initialized data
+  R - readable
+  S - shareable
+  W - writeable
+
+Imports from KERNEL32.dll
+    CreateFileA
+    CreateFileMappingA
+    ExitProcess
+    FindFirstFileA
+    FindNextFileA
+    GetFileSize
+    MapViewOfFile
+    UnmapViewOfFile
+    lstrcpy
+    CloseHandle
+
+
