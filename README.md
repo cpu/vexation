@@ -20,7 +20,7 @@ does not find `kernel32.dll` API addresses at runtime.
 
 ## pijector
 
-Accompanying post: **TBA**
+Accompanying post: [A VXers Best Friend: The Delta Offset](https://log.vexation.ca/2019/03/a-vxers-best-friend-delta-offset.html)
 
 "pijector" (position independent (self-in)jector) is a continuation of
 Minijector. `pijector.exe` doesn't use a separate data section for its variable
