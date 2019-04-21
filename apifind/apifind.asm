@@ -5,7 +5,7 @@
 ; program that finds the address of the kernel32.dll 
 ; GetProcAddress export at runtime without hardcoding ordinals
 ; or memory addresses.
-; 
+;
 ; As a demo the GetProcAddress export is used to find the address
 ; of kernel32.dll's FindFirstFileA function.
 ;
@@ -33,9 +33,9 @@ PE_SECTION_ALIGNMENT EQU 10000h
 ; One "normal" import.
 extrn ExitProcess:PROC
 
-; For the function we're resolving at runtime we need to add 
-; our own PROCDESC so we can get type checking and stdcall arg
-; passing when using a raw function pointer.
+; For the functions we're resolving at runtime we need to add
+; our own PROCDESCs so we can get type checking and stdcall arg
+; passing when using raw function pointers.
 procGetProcAddress PROCDESC stdcall baseAddr:DWORD,name:DWORD
 procFindFirstFileA PROCDESC stdcall fileName:DWORD,findData:DWORD
 
@@ -68,22 +68,29 @@ start:
 ; the return address on the top of the stack will be somewhere in kernel32.dll
 ; address space and we can search from there for the start of a PE header to get
 ; the base kernel32.dll address.
+;
+; NOTE(@cpu): One _disadvantage_ of this technique is it only works if the virus
+;             code is executed before the host program code. For more fancy
+;             entrypoint obfuscation this will need to be revisited.
 @@findkernel32:
-  ; Put the top of the stack into esi. This is the return address for the 
-  ; CreateProcess function call one frame above us.
+  ; Put the dword value from the top of the stack into esi. This is the return
+  ; address for the kernel32.CreateProcess function call one frame above us.
   mov esi, dword ptr [esp]
-  ; We know the DLL is section aligned so clear out the lower byte of ESI
+  ; We know the DLL is section aligned so clear out the lower byte of ESI to
+  ; begin the search at the section start.
   and esi, 0FFFF0000h
 @@findpe:
-  ; If ESI points at the value 'MZ' we know its the base addr of kernel32.dll
-  cmp word ptr (IMAGE_DOS_HEADER [esi]).Magic, 05A4Dh
+  ; If ESI points at the value 'MZ' it indicates the section contains
+  ; a PE executable and we know its the base addr of kernel32.dll
+  cmp word ptr (IMAGE_DOS_HEADER [esi]).Magic, IMAGE_DOS_SIGNATURE
   je @@findgetprocaddr
-  ; Otherwise move back the section alignment and try again
+  ; Otherwise move back by the section alignment and try checking 
+  ; for the DOS header magic bytes again.
   sub esi, PE_SECTION_ALIGNMENT
   jmp @@findpe
-; Now we need to find the kernel32 GetProcAddress API function pointer.
-; We can use this to bootstrap all of the other required APIs without
-; hardcoding any offsets.
+; Otherwise we found the kernel base address in ESI. Now we need to find the
+; kernel32 GetProcAddress API function pointer. We can use this to bootstrap all
+; of the other required APIs without hardcoding any offsets.
 @@findgetprocaddr:
   ; Save the Kernel32.dll base addr
   mov [kernel32Base], esi
@@ -100,19 +107,19 @@ start:
   ; kernel32 base address to it
   add ebx, eax
 
-; Now it's a matter of finding the index of the AddressOfNames entry
-; that matches GetProcAddress. We can use the learned index to find the
-; GetProcAddress ordinal which will let us find the GetProcAddress 
-; function RVA.
-;
-; In a high level pseudocode, this is:
-;
-; for i = 0; i < numExportedFuncs; i++ {
-;   if AddressOfNames[i] == "GetProcAddress" {
-;     return i
-;   }
-; }
-;
+  ; Now it's a matter of finding the index of the AddressOfNames entry
+  ; that matches GetProcAddress. We can use the learned index to find the
+  ; GetProcAddress ordinal which will let us find the GetProcAddress 
+  ; function RVA.
+  ;
+  ; In a high level pseudocode, this is:
+  ;
+  ; for i = 0; i < numExportedFuncs; i++ {
+  ;   if AddressOfNames[i] == "GetProcAddress" {
+  ;     return i
+  ;   }
+  ; }
+  ;
   ; Zero the index counter to begin the loop
   xor edx, edx
 @@checkexportname:
@@ -171,7 +178,8 @@ start:
 ; as the offset to find the function pointer.
 ;
 ; To get an offset into AddressOfFunctions using the ordinal we need
-; to multiply by the 4 because each AddressOfFunction entry is a DWORD.
+; to multiply the ordinal index by 4 because each AddressOfFunction entry is
+; a DWORD.
 @@findfunc:
   ; A shift and rotate to the left by 2 is a cheap multiply by 4.
   shl edx, 02h
@@ -185,7 +193,7 @@ start:
   mov esi, [esi]
   ; Adjust by kernel32.dll base
   add esi, eax
-    
+
 ; Woohoo. esi now finally holds the pointer to GetProcAddress in 
 ; kernel32.dll. Now we can bootstrap our win32 APIs!
   mov [GetProcAddress], esi
