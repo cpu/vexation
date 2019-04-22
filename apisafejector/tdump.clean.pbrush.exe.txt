@@ -1,0 +1,136 @@
+Turbo Dump  Version 4.2.16.1 Copyright (c) 1988, 1996 Borland International
+                    Display of File PBRUSH.EXE
+
+Old Executable Header
+
+DOS File Size                                       1200h  (  4608. )
+Load Image Size                                      450h  (  1104. )
+Relocation Table entry count                          0000h  (     0. )
+Relocation Table address                              0040h  (    64. )
+Size of header record      (in paragraphs)            0004h  (     4. )
+Minimum Memory Requirement (in paragraphs)            0000h  (     0. )
+Maximum Memory Requirement (in paragraphs)            FFFFh  ( 65535. )
+File load checksum                                    0000h  (     0. )
+Overlay Number                                        0000h  (     0. )
+
+Initial Stack Segment  (SS:SP)			  0000:00B8
+Program Entry Point    (CS:IP)			  0000:0000
+
+
+Portable Executable (PE) File
+
+Header base: 00000080
+
+CPU type                 80386
+Flags                    10E [ executable backwards 32bit ]
+DLL flags                0000 [ ]
+Linker Version           2.32
+Time stamp               2FF35566
+O/S Version              1.0
+User Version             0.0
+Subsystem Version        4.0
+Subsystem                0002 [ Windows GUI ]
+Object count             00000004
+Symbols offset           00000000
+Symbols count            00000000
+Optional header size     00E0
+Magic #                  10B
+Code size                00000200
+Init Data size           00000C00
+Uninit Data size         00000000
+Entry RVA                0000100C
+Image base               00400000
+Code base                00001000
+Data base                00002000
+Object/File align        00001000/00000200
+Reserved                 00000000
+Image size               00005000
+Header size              00000400
+Checksum                 00008462
+Stack reserve/commit     00100000/00001000
+Heap reserve/commit      00100000/00001000
+Number interesting RVAs  00000010
+Name                   RVA       Size  
+------------------  --------  --------
+Exports             00000000  00000000
+Imports             00002000  000000E4
+Resources           00003000  0000071C
+Exceptions          00000000  00000000
+Security            00000000  00000000
+Fixups              00004000  00000014
+Debug               00000000  00000000
+Description         00000000  00000000
+TLS                 00000000  00000000
+Callbacks           00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+
+Object table:
+#   Name      VirtSize    RVA     PhysSize  Phys off  Flags   
+--  --------  --------  --------  --------  --------  --------
+01  .text     000000AB  00001000  00000200  00000400  60000020 [CER]
+02  .idata    000000E4  00002000  00000200  00000600  40000040 [IR]
+03  .rsrc     0000071C  00003000  00000800  00000800  40000040 [IR]
+04  .reloc    00000034  00004000  00000200  00001000  42000040 [IDR]
+
+Key to section flags:
+  C - contains code
+  D - discardable
+  E - executable
+  I - contains initialized data
+  R - readable
+
+Imports from KERNEL32.dll
+    GetStartupInfoA(hint = 0124)
+    GetCommandLineA(hint = 00bc)
+    ExitProcess(hint = 0071)
+    GetModuleHandleA(hint = 00f9)
+
+Imports from SHELL32.dll
+    ShellExecuteA(hint = 004e)
+
+Resources:
+Type          Name                   Lang Id
+--------------------------------------------
+[0 named entries, 3 ID entries]
+3  (next directory @00000028)
+
+              [0 named entries, 1 ID entries]
+              1  (next directory @00000070)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000000B8)
+                                         Offset:    000030F0
+                                         Size:      000002E8
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+14  (next directory @00000040)
+
+              [0 named entries, 1 ID entries]
+              1  (next directory @00000088)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000000C8)
+                                         Offset:    000033D8
+                                         Size:      00000014
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+16  (next directory @00000058)
+
+              [0 named entries, 1 ID entries]
+              1  (next directory @000000A0)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000000D8)
+                                         Offset:    000033EC
+                                         Size:      00000330
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+
+
