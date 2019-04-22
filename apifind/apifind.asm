@@ -56,7 +56,7 @@ procFindFirstFileA PROCDESC stdcall fileName:DWORD,findData:DWORD
   FindFirstFileA DD 0
 
   ; Some arguments to use with FindFirstFileA
-  findFilter BYTE 2ah,2eh,65h,78h,65h,0h ; *.exe\0
+  findFilter DB "*.exe", 0
   findData WIN32_FIND_DATA <0>
   findHandle HANDLE 0
 .code
