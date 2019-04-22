@@ -1,0 +1,29 @@
+This program must be run under Win32
+CODE
+`DATA
+.idata
+.reloc
+>MZt
+GetProcAddress
+ExitProcess
+lstrcpy
+FindFirstFileA
+FindNextFileA
+CreateFileA
+GetFileSize
+CreateFileMappingA
+MapViewOfFile
+UnmapViewOfFile
+CloseHandle
+GetModuleHandleA
+*.exe
+.ireloc
+%00@
+KERNEL32.dll
+AddAtomA
+0&0E0u0{0
+1.14191A1S1Y1^1f1x1~1
+2 23282?2G2\2a2i2}2
+3"3(3:3s3|3
+41494H4P4m4v4
+50565>5D5_5

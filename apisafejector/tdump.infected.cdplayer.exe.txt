@@ -1,0 +1,668 @@
+Turbo Dump  Version 4.2.16.1 Copyright (c) 1988, 1996 Borland International
+                   Display of File CDPLAYER.EXE
+
+Old Executable Header
+
+DOS File Size                                      16200h  ( 90624. )
+Load Image Size                                      450h  (  1104. )
+Relocation Table entry count                          0000h  (     0. )
+Relocation Table address                              0040h  (    64. )
+Size of header record      (in paragraphs)            0004h  (     4. )
+Minimum Memory Requirement (in paragraphs)            0000h  (     0. )
+Maximum Memory Requirement (in paragraphs)            FFFFh  ( 65535. )
+File load checksum                                    0000h  (     0. )
+Overlay Number                                        0000h  (     0. )
+
+Initial Stack Segment  (SS:SP)			  0000:00B8
+Program Entry Point    (CS:IP)			  0000:0000
+
+
+Portable Executable (PE) File
+
+Header base: 00000080
+
+CPU type                 80386
+Flags                    10E [ executable backwards 32bit ]
+DLL flags                0000 [ ]
+Linker Version           2.3C
+Time stamp               2FF37EC7
+O/S Version              4.0
+User Version             0.0
+Subsystem Version        4.0
+Subsystem                0002 [ Windows GUI ]
+Object count             00000008
+Symbols offset           00000000
+Symbols count            00000000
+Optional header size     00E0
+Magic #                  10B
+Code size                0000D000
+Init Data size           00008400
+Uninit Data size         00000000
+Entry RVA                0001A000
+Image base               00400000
+Code base                00001000
+Data base                0000E000
+Object/File align        00001000/00000200
+Reserved                 00000000
+Image size               0001A000
+Header size              00000400
+Checksum                 00024E29
+Stack reserve/commit     00100000/00001000
+Heap reserve/commit      00100000/00001000
+Number interesting RVAs  00000010
+Name                   RVA       Size  
+------------------  --------  --------
+Exports             00000000  00000000
+Imports             00010000  000000C8
+Resources           00013000  00004618
+Exceptions          00000000  00000000
+Security            00000000  00000000
+Fixups              00018000  00001310
+Debug               00000000  00000000
+Description         00000000  00000000
+TLS                 00000000  00000000
+Callbacks           00000000  00000000
+reserved            00000000  00000000
+reserved            000103F8  0000031C
+reserved            00000000  00000000
+reserved            00000000  00000000
+reserved            00000000  00000000
+
+Object table:
+#   Name      VirtSize    RVA     PhysSize  Phys off  Flags   
+--  --------  --------  --------  --------  --------  --------
+01  .text     0000CFC0  00001000  0000D000  00000400  60000020 [CER]
+02  .sdata    00000004  0000E000  00000200  0000D400  D0000040 [ISRW]
+03  .data     00000C10  0000F000  00000E00  0000D600  C0000040 [IRW]
+04  .idata    0000135C  00010000  00001400  0000E400  40000040 [IR]
+05  .CRT      00000014  00012000  00000200  0000F800  C0000040 [IRW]
+06  .rsrc     00004618  00013000  00004800  0000FA00  40000040 [IR]
+07  .reloc    000014F4  00018000  00001600  00014200  42000040 [IDR]
+08  .ireloc   00001000  0001A000  00000A00  00015800  E0000020 [CERW]
+
+Key to section flags:
+  C - contains code
+  D - discardable
+  E - executable
+  I - contains initialized data
+  R - readable
+  S - shareable
+  W - writeable
+
+Imports from KERNEL32.dll
+    GetDriveTypeA(hint = 00d8)
+    WritePrivateProfileStringA(hint = 0280)
+    GetLastError(hint = 00ef)
+    GetLogicalDrives(hint = 00f5)
+    lstrlenA(hint = 02a5)
+    _lread(hint = 0292)
+    WritePrivateProfileSectionA(hint = 027e)
+    OpenFile(hint = 01b4)
+    ExitThread(hint = 0072)
+    _lclose(hint = 028e)
+    WinExec(hint = 0272)
+    GetPrivateProfileStringA(hint = 010b)
+    GetExitCodeThread(hint = 00e1)
+    GetPrivateProfileIntA(hint = 0105)
+    WaitForSingleObject(hint = 026d)
+    Sleep(hint = 0241)
+    MultiByteToWideChar(hint = 01b0)
+    SetErrorMode(hint = 021d)
+    CreateThread(hint = 004d)
+    CloseHandle(hint = 0024)
+    ExitProcess(hint = 0071)
+    RtlMoveMemory(hint = 01e7)
+    LocalFree(hint = 0193)
+    RtlZeroMemory(hint = 01e9)
+    GetTickCount(hint = 0140)
+    InterlockedDecrement(hint = 0173)
+    GetCommandLineA(hint = 00bc)
+    InterlockedIncrement(hint = 0175)
+    GetLocaleInfoA(hint = 00f1)
+    GetUserDefaultLCID(hint = 0144)
+    SearchPathA(hint = 0200)
+    GetModuleHandleA(hint = 00f9)
+    LocalAlloc(hint = 018f)
+
+Imports from USER32.dll
+    SetTimer(hint = 01e5)
+    DefWindowProcA(hint = 0078)
+    EnumChildWindows(hint = 00ac)
+    GetSystemMetrics(hint = 0116)
+    SetFocus(hint = 01c9)
+    MessageBoxA(hint = 0176)
+    ReleaseDC(hint = 01a3)
+    EnableMenuItem(hint = 00a5)
+    SetWindowPos(hint = 01ec)
+    GetWindowRect(hint = 0124)
+    WinHelpA(hint = 0225)
+    DialogBoxParamA(hint = 0084)
+    PostMessageA(hint = 018e)
+    GetDC(hint = 00d8)
+    DestroyWindow(hint = 0081)
+    GetMessageA(hint = 00ff)
+    SetWindowTextA(hint = 01ee)
+    GetWindowLongA(hint = 0121)
+    TranslateMessage(hint = 020f)
+    EndDeferWindowPos(hint = 00a8)
+    DeferWindowPos(hint = 007a)
+    BeginDeferWindowPos(hint = 0008)
+    GetWindowDC(hint = 0120)
+    IsWindowVisible(hint = 0153)
+    wvsprintfA(hint = 022f)
+    CheckMenuItem(hint = 002f)
+    GetLastActivePopup(hint = 00f2)
+    GetSubMenu(hint = 0112)
+    GetMenu(hint = 00f3)
+    IsWindow(hint = 0150)
+    CreateDialogParamA(hint = 0046)
+    EnableWindow(hint = 00a7)
+    GetWindowThreadProcessId(hint = 012a)
+    FindWindowA(hint = 00ba)
+    GetWindowPlacement(hint = 0123)
+    WindowFromPoint(hint = 0229)
+    SendDlgItemMessageA(hint = 01ad)
+    EndDialog(hint = 00a9)
+    SetDlgItemTextA(hint = 01c6)
+    InvalidateRect(hint = 013b)
+    UpdateWindow(hint = 0219)
+    SetCursor(hint = 01c0)
+    ScreenToClient(hint = 01a9)
+    PtInRect(hint = 0193)
+    ChildWindowFromPoint(hint = 0032)
+    RegisterWindowMessageA(hint = 01a0)
+    SetCapture(hint = 01b8)
+    ClientToScreen(hint = 0035)
+    GetParent(hint = 0108)
+    ReleaseCapture(hint = 01a2)
+    GetCursorPos(hint = 00d7)
+    DrawIcon(hint = 009a)
+    EndPaint(hint = 00aa)
+    GetWindowTextA(hint = 0126)
+    BeginPaint(hint = 0009)
+    PeekMessageA(hint = 018b)
+    DrawTextA(hint = 009f)
+    SetDlgItemInt(hint = 01c5)
+    GetDlgItemInt(hint = 00de)
+    RedrawWindow(hint = 0194)
+    BringWindowToTop(hint = 000a)
+    SetForegroundWindow(hint = 01ca)
+    LoadIconA(hint = 015e)
+    LoadBitmapA(hint = 0158)
+    LoadCursorA(hint = 015a)
+    DefDlgProcA(hint = 0072)
+    RegisterClassA(hint = 0195)
+    GetForegroundWindow(hint = 00e3)
+    CharUpperBuffA(hint = 002b)
+    IsIconic(hint = 014d)
+    SetWindowPlacement(hint = 01eb)
+    LoadStringA(hint = 0168)
+    LoadAcceleratorsA(hint = 0156)
+    ShowWindow(hint = 01f9)
+    GetFocus(hint = 00e2)
+    GetDesktopWindow(hint = 00da)
+    GetDlgItemTextA(hint = 00df)
+    DispatchMessageA(hint = 0086)
+    TranslateAcceleratorA(hint = 020c)
+    IsDialogMessageA(hint = 0149)
+    wsprintfA(hint = 022d)
+    GetDlgCtrlID(hint = 00dc)
+    CallWindowProcA(hint = 0011)
+    CopyRect(hint = 003e)
+    DrawFocusRect(hint = 0097)
+    RemovePropA(hint = 01a5)
+    CreateWindowExA(hint = 0050)
+    GetDlgItem(hint = 00dd)
+    SetPropA(hint = 01d9)
+    SetWindowLongA(hint = 01e9)
+    GetClientRect(hint = 00cf)
+    MapWindowPoints(hint = 0173)
+    SendMessageA(hint = 01af)
+    GetPropA(hint = 010b)
+    SetRect(hint = 01db)
+    DrawEdge(hint = 0096)
+    GetSysColor(hint = 0113)
+    KillTimer(hint = 0155)
+    PostQuitMessage(hint = 0190)
+    DeleteMenu(hint = 007b)
+
+Imports from CRTDLL.dll
+    _exit(hint = 004e)
+    _amsg_exit(hint = 0025)
+    _XcptFilter(hint = 0013)
+    exit(hint = 00fb)
+    _initterm(hint = 0077)
+    __GetMainArgs(hint = 0014)
+    _acmdln_dll(hint = 0023)
+    _commode_dll(hint = 0034)
+    _fmode_dll(hint = 005e)
+    _aexit_rtn_dll(hint = 0024)
+    _except_handler2(hint = 0045)
+    rand(hint = 014d)
+    strchr(hint = 015e)
+    strcspn(hint = 0162)
+    strspn(hint = 016b)
+    strncpy(hint = 0168)
+    sscanf(hint = 015c)
+    srand(hint = 015b)
+
+Imports from GDI32.dll
+    GetTextMetricsA(hint = 00cd)
+    SaveDC(hint = 0101)
+    IntersectClipRect(hint = 00d5)
+    RestoreDC(hint = 00ff)
+    SetTextAlign(hint = 012b)
+    ExtTextOutA(hint = 0063)
+    SelectObject(hint = 0106)
+    DeleteObject(hint = 0046)
+    SetBkColor(hint = 010c)
+    CreateCompatibleDC(hint = 001f)
+    DeleteDC(hint = 0043)
+    CreateBitmap(hint = 0019)
+    PatBlt(hint = 00e2)
+    CreateSolidBrush(hint = 0040)
+    BitBlt(hint = 0009)
+    CreateFontIndirectA(hint = 002c)
+    GetDeviceCaps(hint = 008e)
+    SetTextColor(hint = 012d)
+    GetObjectA(hint = 00ad)
+    GetTextExtentPointA(hint = 00c9)
+    GetStockObject(hint = 00bc)
+    GetTextExtentPoint32A(hint = 00c7)
+
+Imports from COMCTL32.dll
+    8
+    CreateToolbarEx(hint = 0007)
+    6
+
+Imports from SHELL32.dll
+    DragAcceptFiles(hint = 0008)
+    DragQueryFileA(hint = 000b)
+    SHGetFileInfo(hint = 0032)
+    DragFinish(hint = 0009)
+    ShellAboutA(hint = 004c)
+
+Imports from WINMM.dll
+    mciSendCommandA(hint = 002e)
+
+Imports from ADVAPI32.dll
+    RegCloseKey(hint = 007e)
+    RegSetValueExA(hint = 00a9)
+    RegOpenKeyA(hint = 0094)
+    RegQueryValueExA(hint = 009d)
+    RegCreateKeyA(hint = 0081)
+
+Imports from ole32.dll
+    OleInitialize(hint = 006b)
+    CoCreateInstance(hint = 0006)
+    OleUninitialize(hint = 0082)
+
+Resources:
+Type          Name                   Lang Id
+--------------------------------------------
+[0 named entries, 10 ID entries]
+1  (next directory @00000060)
+
+              [0 named entries, 3 ID entries]
+              5  (next directory @00000228)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000005A0)
+                                         Offset:    00014D0C
+                                         Size:      00000134
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              6  (next directory @00000240)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000005B0)
+                                         Offset:    00014E54
+                                         Size:      000002EC
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              7  (next directory @00000258)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000005C0)
+                                         Offset:    00015154
+                                         Size:      00000134
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+2  (next directory @00000088)
+
+              [0 named entries, 3 ID entries]
+              101  (next directory @00000270)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000005D0)
+                                         Offset:    000143A4
+                                         Size:      00000468
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              105  (next directory @00000288)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000005E0)
+                                         Offset:    0001480C
+                                         Size:      00000428
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              108  (next directory @000002A0)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000005F0)
+                                         Offset:    00014C34
+                                         Size:      000000D8
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+3  (next directory @000000B0)
+
+              [0 named entries, 4 ID entries]
+              1  (next directory @000002B8)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000600)
+                                         Offset:    00013B30
+                                         Size:      000002E8
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              2  (next directory @000002D0)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000610)
+                                         Offset:    00013E18
+                                         Size:      00000128
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              3  (next directory @000002E8)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000620)
+                                         Offset:    00013F64
+                                         Size:      000002E8
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              4  (next directory @00000300)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000630)
+                                         Offset:    00014260
+                                         Size:      00000130
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+4  (next directory @000000E0)
+
+              [0 named entries, 1 ID entries]
+              102  (next directory @00000318)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000640)
+                                         Offset:    000152B4
+                                         Size:      00000288
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+5  (next directory @000000F8)
+
+              [0 named entries, 3 ID entries]
+              103  (next directory @00000330)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000650)
+                                         Offset:    0001553C
+                                         Size:      000003CE
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              104  (next directory @00000348)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000660)
+                                         Offset:    0001590C
+                                         Size:      00000276
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              113  (next directory @00000360)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000670)
+                                         Offset:    00015B84
+                                         Size:      000002DE
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+6  (next directory @00000120)
+
+              [0 named entries, 15 ID entries]
+              19  (next directory @00000378)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000680)
+                                         Offset:    00015F8C
+                                         Size:      0000003C
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              26  (next directory @00000390)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000690)
+                                         Offset:    00015EF8
+                                         Size:      00000092
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              32  (next directory @000003A8)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000006A0)
+                                         Offset:    00015E64
+                                         Size:      00000092
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              63  (next directory @000003C0)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000006B0)
+                                         Offset:    00015FC8
+                                         Size:      000000AA
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              82  (next directory @000003D8)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000006C0)
+                                         Offset:    000160A0
+                                         Size:      000000AC
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              88  (next directory @000003F0)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000006D0)
+                                         Offset:    0001614C
+                                         Size:      00000214
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              94  (next directory @00000408)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000006E0)
+                                         Offset:    00016360
+                                         Size:      000000FC
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              95  (next directory @00000420)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000006F0)
+                                         Offset:    0001645C
+                                         Size:      00000088
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              101  (next directory @00000438)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000700)
+                                         Offset:    000164E4
+                                         Size:      000000FC
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              113  (next directory @00000450)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000710)
+                                         Offset:    000165E0
+                                         Size:      0000018C
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              125  (next directory @00000468)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000720)
+                                         Offset:    00016074
+                                         Size:      0000002C
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              194  (next directory @00000480)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000730)
+                                         Offset:    0001676C
+                                         Size:      00000108
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              195  (next directory @00000498)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000740)
+                                         Offset:    00016F68
+                                         Size:      00000606
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              196  (next directory @000004B0)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000750)
+                                         Offset:    00017570
+                                         Size:      000000A8
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              197  (next directory @000004C8)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000760)
+                                         Offset:    00016874
+                                         Size:      000006F4
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+9  (next directory @000001A8)
+
+              [0 named entries, 1 ID entries]
+              118  (next directory @000004E0)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000770)
+                                         Offset:    0001529C
+                                         Size:      00000018
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+12  (next directory @000001C0)
+
+              [0 named entries, 3 ID entries]
+              109  (next directory @000004F8)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000780)
+                                         Offset:    00014E40
+                                         Size:      00000014
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              111  (next directory @00000510)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @00000790)
+                                         Offset:    00015140
+                                         Size:      00000014
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              112  (next directory @00000528)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000007A0)
+                                         Offset:    00015288
+                                         Size:      00000014
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+14  (next directory @000001E8)
+
+              [0 named entries, 3 ID entries]
+              107  (next directory @00000540)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000007B0)
+                                         Offset:    00013F40
+                                         Size:      00000022
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              110  (next directory @00000558)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000007C0)
+                                         Offset:    0001424C
+                                         Size:      00000014
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+              114  (next directory @00000570)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000007D0)
+                                         Offset:    00014390
+                                         Size:      00000014
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+16  (next directory @00000210)
+
+              [0 named entries, 1 ID entries]
+              1  (next directory @00000588)
+
+                                     [0 named entries, 1 ID entries]
+                                     1033  (data @000007E0)
+                                         Offset:    000137F0
+                                         Size:      00000340
+                                         Code Page: 00000000
+                                         Reserved:  00000000
+
+
+
