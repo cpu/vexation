@@ -46,3 +46,20 @@ resolve required Windows API function addresses with `GetProcAddress`.
 requiring API variables, describing the API functions/arguments, finding the API
 function address, and finally invoking the API function. Start by reading
 "apifind" and then compare with "apifind2".
+
+## apisafejector
+
+Accompanying post: **TBA**.
+
+"apisafejector" integrates the techniques/code from "apifind2" with "pijector".
+By using dynamically resolved `kernel32.dll` function addresses the generation
+1+ virus code now works without crashing! The primary challenge that remains is
+fixing the virus code to call the original host program's entrypoint to avoid
+detection.
+
+This program represents a fun milestone because it's the first version of the
+virus that is truly viral. Running `apisafejector.exe` in the same directory as
+`calc.exe` will infect it. Running `calc.exe` next to a new executable (e.g.
+`cdplayer.exe`) will infect that executable. Of course since the original
+executable code is never run this is a very obvious virus, both `calc` and
+`cdplayer` will appear broken :-)
