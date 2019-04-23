@@ -35,7 +35,7 @@ so the injected copy is fully inert. The virus code also does not find
 
 ## apifind & apifind2
 
-Accompanying post: **TBA**.
+Accompanying post: [Using Win95 Kernel32.dll exports Like a virus](https://log.vexation.ca/2019/04/using-win95-kernel32dll-exports-like.html)
 
 "apifind" and "apifind2" are stand-alone examples of finding required win32 API
 functions at runtime without hardcoding anything. Both find the `kernel32.dll`
@@ -49,7 +49,7 @@ function address, and finally invoking the API function. Start by reading
 
 ## apisafejector
 
-Accompanying post: **TBA**.
+Accompanying post: [Using Win95 Kernel32.dll exports Like a virus](https://log.vexation.ca/2019/04/using-win95-kernel32dll-exports-like.html)
 
 "apisafejector" integrates the techniques/code from "apifind2" with "pijector".
 By using dynamically resolved `kernel32.dll` function addresses the generation
