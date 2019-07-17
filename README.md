@@ -1,6 +1,6 @@
 # VeXation
 
-Code accompanying [the VeXation development blog](https://log.vexation.com).
+Code accompanying [the VeXation development blog](https://log.vexation.ca).
 
 All code is written in x86 ASM targetting Borland Turbo Assembler 5.0 and
 Windows 95 and is licensed under the GPLv3.
