@@ -1,0 +1,70 @@
+footer {
+  margin-top: 4em;
+  font-size: 12px;
+}
+
+article {
+ font-size: 16px;
+}
+
+article section h1 {
+  font-size: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+article section h2 {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+}
+
+article section h3 {
+  margin-top: 1rem;
+  font-size: 1rem;
+}
+
+article section p {
+  margin-bottom: 1rem;
+}
+
+article section li {
+  margin-bottom: calc(1rem / 3);
+}
+
+article section img {
+  border: 8px solid #e5e5e5;
+}
+
+article section figure {
+  padding: 5px;
+  margin: auto;
+}
+
+article section figcaption {
+  font: italic smaller sans-serif;
+  margin-top: 5px;
+  padding: 3px;
+  text-align: center;
+}
+
+:not(pre) > code {
+  border: 1px solid #ccc;
+  background-color: #fafafa;
+  padding: 0px 3px;
+  margin: 0;
+  font-size: 14px;
+}
+
+pre {
+  background: #29292e;
+  color: #eff0f9;
+  line-height: 1em;
+  font-size: 0.5em;
+  padding-left: 4%;
+  padding-right: 3%;
+  padding-top: 3%;
+  padding-bottom: 3%;
+  border: 1px solid #d5d5d5;
+  border-left: 10px solid #d5d5d5;
+  margin-left: -25px;
+  overflow-x: auto;
+}
