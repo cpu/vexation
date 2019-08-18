@@ -1,5 +1,5 @@
 ---
-title: Using kernel32.dll exports like a virus.
+title: Using kernel32.dll exports like a virus
 date: "2019-04-22T00:00:00.000Z"
 description: Dynamically finding the Win95 kernel32.dll base address and exported APIs.
 ---
