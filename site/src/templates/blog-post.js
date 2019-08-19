@@ -37,6 +37,7 @@ class BlogPostTemplate extends React.Component {
               {post.frontmatter.date}
             </p>
           </header>
+          <section dangerouslySetInnerHTML={{ __html: post.tableOfContents }} />
           <section dangerouslySetInnerHTML={{ __html: post.html }} />
           <hr
             style={{
@@ -95,6 +96,9 @@ export const pageQuery = graphql`
         date(formatString: "MMMM DD, YYYY")
         description
       }
+      tableOfContents(
+        maxDepth: 1
+      )
     }
   }
 `

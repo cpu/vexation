@@ -31,7 +31,7 @@ article section li {
 }
 
 article section img {
-  border: 8px solid #e5e5e5;
+  border: 4px solid #e5e5e5;
 }
 
 article section figure {
@@ -54,17 +54,16 @@ article section figcaption {
   font-size: 14px;
 }
 
-pre {
-  background: #29292e;
-  color: #eff0f9;
-  line-height: 1em;
-  font-size: 0.5em;
-  padding-left: 4%;
-  padding-right: 3%;
-  padding-top: 3%;
-  padding-bottom: 3%;
-  border: 1px solid #d5d5d5;
-  border-left: 10px solid #d5d5d5;
-  margin-left: -25px;
-  overflow-x: auto;
+.gatsby-highlight {
+  background-color: #fdf6e3;
+  border-radius: 0.3em;
+  margin: 0 0;
+  padding: 0.5em;
+  overflow: auto;
+}
+
+.gatsby-highlight pre[class*="language-"].line-numbers {
+  padding: 0;
+  padding-left: 2.8em;
+  overflow: initial;
 }
