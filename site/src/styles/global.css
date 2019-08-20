@@ -7,6 +7,11 @@ article {
  font-size: 16px;
 }
 
+a {
+  text-shadow: none !important;
+  background-image: none !important;
+}
+
 article section h1 {
   font-size: 1.5rem;
   margin-top: 1.5rem;
