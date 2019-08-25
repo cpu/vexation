@@ -73,9 +73,15 @@ class BlogPostTemplate extends React.Component {
               flex: `1 0 80px`,
               textAlign: `center`,
               }}>
-              <a style={{cursor: `pointer`}} onClick={ () => { this.scrollToTop(); }}>
+              <button style={{
+                  cursor: `pointer`,
+                  background: `none`,
+                  border: `0`,
+                  color: `#134896`,
+                }}
+                onClick={ () => { this.scrollToTop(); }}>
               ↑ Back to top
-              </a>
+              </button>
             </li>
             <li style={{
               flex: `1`,
