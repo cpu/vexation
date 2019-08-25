@@ -72,7 +72,7 @@ module.exports = {
         short_name: `vexation`,
         start_url: `/`,
         background_color: `#ffffff`,
-        theme_color: `#663399`,
+        theme_color: `#3E442B`,
         display: `minimal-ui`,
       },
     },
