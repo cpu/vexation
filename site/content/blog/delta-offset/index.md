@@ -8,7 +8,7 @@ Welcome back! If this is your first visit to VeXation you may want to start by r
 
 # Recap
 
-At the end of the <a href="/pe-infector-basics">last post</a> I completed [`minijector`](https://github.com/cpu/vexation/tree/cpu-pijector-wip/minijector), a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the infected target. There are a handful of shortcomings that prevent `minijector` from being a real functional virus. To recap, the virus code quickly falls apart for generations after 0:
+At the end of the <a href="/pe-infector-basics">last post</a> I completed [`minijector`](https://github.com/cpu/vexation/tree/cpu-pijector-wip/minijector), a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the to-be-infected target. There are a handful of shortcomings that prevent `minijector` from being a real functional virus. To recap, the virus code quickly falls apart for generations after 0:
 
 
 1. The virus code relies on a data section that isn't copied into the infected program. Variable references will all be broken.
@@ -21,7 +21,7 @@ Today I'll describe the approach I took to fix the first of these three problems
 
 A big problem with Minijector is that its `CODE` section refers to variables in a separate `DATA` section. When Minijector's code is copied into generation 1+ all of the variables are left behind and the references will be invalid!
 
-I found it helpful to get an intuition for this using `tdump` on the `minijector.exe` executable.
+I found it helpful to get an intuition for this using `tdump` on the `minijector.exe` executable. _(If this idea already makes plenty of sense to you feel free to <a href="/delta-offset/#code-is-data-is-code">skip ahead</a>)_.
 
 ```
 Turbo Dump  Version 4.2.16.1 Copyright (c) 1988, 1996 Borland International
@@ -37,7 +37,7 @@ Object table:
 04  .reloc    00001000  00004000  00000200  00001000  50000040 [ISR]
 ```
 
-Here I can see there's both a `CODE` and a `DATA` section present in the object table and that each of those section has a non-zero `PhysSize`. 
+The `tdump` output shows there's both a `CODE` and a `DATA` section present in the object table and that each has a non-zero `PhysSize`. 
 
 (_Side note: The names of these sections is a give-away that I used Borland Turbo Assembler. Other assemblers will choose different names. For example, `calc.exe` was built by Microsoft with a different set of tools and as a result it has a `.text` section instead of a `CODE` section_).
 
@@ -61,11 +61,11 @@ Object table:
 07  .ireloc   00001000  00013000  00000400  0000E800  E0000020 [CERW]
 ```
 
-Since the virus code was using both sections (`CODE` and `DATA`) in the original `minijector.exe` and there's only one new section in `calc.exe` (`.ireloc`) it's easy to understand there is a mismatch that needs to be addressed.
+Since the virus code was using **two** sections (`CODE` and `DATA`) in the original `minijector.exe` and there's only **one** new section in `calc.exe` (`.ireloc`) it's easy to understand there is a mismatch that needs to be addressed.
 
-## Code is Data is Code
+# Code is Data is Code
 
-It's tempting to think about fixing this problem by duplicating the process generation 0 uses to copy its `CODE` section to the injected `.ireloc` section. Overall this approach seemed like  to methe wrong solution to me. It will be more complex managing injecting multiple sections and as mentioned in the previous post adding a new section is already pretty clumsy from an AV evasion perspective. Continuing to pile new sections into a target isn't very appealing.
+It's tempting to think about fixing this problem by duplicating the process generation 0 uses to copy its `CODE` section to the injected `.ireloc` section and using it to also copy a `DATA` section. Overall this approach seemed like  to methe wrong solution to me. It will be more complex managing injecting multiple sections and as mentioned in the <a href="/pe-infector-basics">previous post</a> adding a new section is already pretty clumsy from an AV evasion perspective. Continuing to pile new sections into a target isn't very appealing.
 
 The route I decided to follow was to remove the `DATA` section entirely and have the virus maintain and update variables inside of its existing `CODE` section. I started by copying the `minijector` folder from the [VeXation repo](https://github.com/cpu/vexation) to create [a `pijector` folder](https://github.com/cpu/vexation/tree/master/pijector) (_position independent (in)jector, get it?_). Updating all of the old `"minijector"` references in the `Makefile`, `.inc`, `.def`, and `.asm` files was enough to get started on a position independent version of `minijector`.
 
@@ -133,7 +133,7 @@ The addresses of the variables are offsets from where the OS loaded `minijector.
 
 In this case the base address is `0x00400000` and the `infectFilter` variable is at an offset of `0x14E6`, the `findData` variable is at an offset of `0x13A8` and the `findHandle` variable is at an offset of `0x13A4`. 
 
-(_Side Note: You can also see the [stdcall calling convention](https://en.wikipedia.org/wiki/X86_calling_conventions#stdcall) in action here. The assembler helpfully replaced the arguments to the `call` instruction with `push` operations in the correct reversed order_) 
+(_Side Note:_ You can also see the [stdcall calling convention](https://en.wikipedia.org/wiki/X86_calling_conventions#stdcall) in action here. In the debugger view you can see the assembler helpfully replaced the arguments to each `call` instruction with `push` operations in the correct reversed order for the convention in use.)
 
 ![Debugging pijector.exe to see variable reference offsets](./td32.1.png)
 
@@ -154,20 +154,20 @@ The core idea is to figure out at runtime the difference in location between whe
 There are a handful of different ways to compute a delta offset but the standard textbook approach is to exploit the relative nature of `call` and its effect on the stack. Here's an example:
 
 ```nasm{numberLines: true}
-    call @@delta
+  call @@delta
 @@delta:
-    pop ebp
-    sub ebp, offset @@delta
-    ; ebp is now the ~*[ holy delta offset ]*~
+  pop ebp
+  sub ebp, offset @@delta
+  ; ebp is now the ~*[ holy delta offset ]*~
 ```
 
 How does this magic incantation work? Well, there's a lot going on in just ~4 lines of assembly so let's break it down.
 
-The first `call` is to a locally scoped label (`@@delta`) for the address immediately after the `call` instruction. When the `call` instruction is executed the return address (the address of the instruction after `call`) will be pushed onto the top of the stack as a side-effect of how `call` works.
+The first `call` on L1 is to a locally scoped label (`@@delta`, on L2) for the address immediately after the `call` instruction (L3). When the `call` instruction is executed the return address (the address of the instruction after `call`) will be pushed onto the top of the stack as a side-effect of how `call` works.
 
-In this case however we don't care about returning from a procedure call, we just want to know where this code is executing from in memory. A `pop` of the top of the stack into `ebp` puts the return address from the `call` instruction that was just executed into `ebp` (recall that the return address will be the address of the instruction after the `call`, the `pop ebp` instruction).
+In this case however we don't care about returning from a procedure call, we just want to know where this code is executing from in memory. A `pop` of the top of the stack into `ebp` (L3) puts the return address from the `call` instruction that was just executed into `ebp` (recall that the return address will be the address of the instruction after the `call`, the `pop ebp` instruction on L3).
 
-Now comes the last trick: subtracting the original label offset (`offset @@delta`) from the address of the `pop ebp` instruction (currently in `ebp`). This gives the difference between where the `pop ebp` instruction would have been in generation 0 and wherever the `pop ebp` instruction happens to be now: the delta offset!
+Now comes the last trick on L on L44: subtracting the original label offset (`offset @@delta`) from the address of the `pop ebp` instruction (currently in `ebp`). This gives the difference between where the `pop ebp` instruction would have been in generation 0 and wherever the `pop ebp` instruction happens to be now: the delta offset!
 
 ## Using the delta offset
 
@@ -216,7 +216,7 @@ To get the virus code to be executed by the infected program I updated `pijector
 
 The complete `pijector` assembly code is available in the [VeXation github repo](https://github.com/cpu/vexation/) in the [pijector folder](https://github.com/cpu/vexation/tree/master/pijector).
 
-Like with Minijector the code can be built by running `make` in the `pijector` directory. Or `make -DDEBUG` to build with debug symbols. `make run` will copy a clean `calc.exe` into the directory and start `pijector.exe` in Borland Turbo Debugger. That will let you step through infecting `calc.exe`. _Remember that after being infected `calc.exe` will be broken because the virus isn't complete yet but the entry-point was changed._
+Like with Minijector the code can be built by running `make` in the `pijector` directory (Or use `make` with a `-DDEBUG` argument to build with debug symbols). Executing `make run` will copy a clean `calc.exe` into the project directory and start `pijector.exe` in Borland Turbo Debugger. That will let you step through infecting `calc.exe`. _Remember that after being infected `calc.exe` will be broken because the virus isn't complete yet but the entry-point was changed._
 
 ## Observing the delta offset in action
 
@@ -248,11 +248,11 @@ Finally by pressing `F8` one last time the debugger will show the end of the del
 
 ![The end of the pijector delta offset calculation.](./td32.5.png)
 
-Now `offset @@delta` has been subtracted from `ebp` it's left holding the value `0x00000000`.
+Now `offset @@delta` has been subtracted from `ebp` and it's left holding the value `0x00000000`.
 
 Wait a second. All zero? Is that right?
 
-Yes! Remember that this is generation 0 so the code is executing from the place the assembler/linker put it. All of the original offsets are correct as-is. The delta offset that needs to be applied is 0 and the calculation is correct.
+Yes! Remember that this is generation 0 so the code is executing from the place the assembler/linker put it. All of the original offsets are correct as-is. In this case the delta offset that needs to be applied is 0 and so the calculation is correct.
 
 After hitting `F9` to continue execution the `pejector.exe` process will finish its work and terminate and I'm left with an infected `calc.exe` to repeat the process with.
 
@@ -263,7 +263,7 @@ Now that I have an infected generation 1 `calc.exe` I can see how its delta offs
 Running `td32 calc.exe` loads the generation 1 program and pauses execution at a debugger screen like this (after dismissing the warning about missing symbols):
 
 ![Debugging an infected calc.exe in CPU view.](./td32.6.png)
-￼
+
 Right away I can use the debugger's output to see the entry point patching worked because the debugger is paused at `0x00413000` which is the base address of where `calc.exe` is loaded (`0x00400000`) plus the RVA of the `.ireloc` section [shown in `tdump calc.exe`](https://github.com/cpu/vexation/blob/master/pijector/calc.infected.exe.tdump.txt) (`0x00013000`). The disassembly is also clearly the delta offset calculation from the virus code and not some part of the original `calc.exe` code.
 
 Now I can follow the same process as before, single stepping with `F8` and watching the delta offset calculation happen piece by piece. After one step forward the debugger view will look as follows:
@@ -325,7 +325,7 @@ There is still **one** big problem left to address before `pijector` could be a 
 
 If a program infected by `pijector` is run it will immediately crash at the first invocation of `FindFirstFileA`. Fixing this problem is going to take even more runtime contortions and I'll save that for the next post :-) _It's a lot of work to make a functional virus!_
 
-Beyond that big problem there's also a smaller problem: the generation 0 `pijector.exe` binary will only work if its run under `td32` or another debugger. The reason is fairly simple to understand: moving the old `.data` section into the `.code` section means the virus is writing to its own code and that's not what Borland Turbo Assembler expected.
+Beyond that big problem there's also a smaller problem: the generation 0 `pijector.exe` binary will only work if it's run under `td32` or another debugger. The reason is fairly simple to understand: moving the old `.data` section into the `.code` section means the virus is **writing** to its own code section and that's not what Borland Turbo Assembler expected: it created the section read-only.
 
 When `tasm32/tlink32` builds the generation 0 `pijector.exe` binary the `CODE` section it creates is marked `CER` (contains code, executable, readable). Notably it doesn't have the `W` flag for "writable". This is only a problem for generation 0 because every subsequent generation will have virus code located in a section that the previous generation of the virus created, not Borland, and the virus code always makes the sections it creates writable. 
 
