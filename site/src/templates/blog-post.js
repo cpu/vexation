@@ -6,6 +6,10 @@ import SEO from "../components/seo"
 import { rhythm, scale } from "../utils/typography"
 
 class BlogPostTemplate extends React.Component {
+  scrollToTop() {
+    window.scrollTo(0, 0);
+  }
+
   render() {
     const post = this.props.data.markdownRemark
     const siteTitle = this.props.data.site.siteMetadata.title
@@ -50,20 +54,32 @@ class BlogPostTemplate extends React.Component {
           <ul
             style={{
               display: `flex`,
-              flexWrap: `wrap`,
+              flexWrap: `nowrap`,
               justifyContent: `space-between`,
               listStyle: `none`,
               padding: 0,
             }}
           >
-            <li>
+            <li style={{
+              flex: `1`,
+              }}>
               {previous && (
                 <Link to={previous.fields.slug} rel="prev">
                   ← {previous.frontmatter.title}
                 </Link>
               )}
             </li>
-            <li>
+            <li style={{
+              flex: `1 0 80px`,
+              textAlign: `center`,
+              }}>
+              <a style={{cursor: `pointer`}} onClick={ () => { this.scrollToTop(); }}>
+              ↑ Back to top
+              </a>
+            </li>
+            <li style={{
+              flex: `1`,
+              }}>
               {next && (
                 <Link to={next.fields.slug} rel="next">
                   {next.frontmatter.title} →
