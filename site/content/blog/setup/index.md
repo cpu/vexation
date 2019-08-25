@@ -43,7 +43,7 @@ To install Win95 in VirtualBox I followed [Socket3's blog post on the subject](h
 1. [Windows 95 Bootdisk floppy disk image](https://drive.google.com/open?id=0B2BOLB8yC3mnTWtwSVk0X0NpZEE)
 1. [SciTech Display Doctor 7.0 Beta](https://drive.google.com/open?id=0B2BOLB8yC3mnbUg3YTVYd0JlU1U)
 
-You will also need a valid Win95 "Certificate of Authenticity" serial number. These are all over the internet but I'll save you a Google and share the one I used (_if you're a cop stop reading this_): 
+You will also need a valid Win95 _"Certificate of Authenticity"_ serial number. These are all over the internet but I'll save you a Google and share the one I used (_if you're a cop stop reading this_): 
 
 ```
 24796-OEM-0014736-66386
@@ -72,13 +72,13 @@ One important thing to point out is that Socket3's approach to VM networking bri
 
 ## Setting up File Sharing
 
-There are no VirtualBox guest additions for Windows95 which means I couldn't use conventional means to share files between the host and the guest. I tried mounting the VM's FAT32 disk image directly into Linux using various tricks but found it unreliable and annoying because the guest had to be shut down first. Out of the box Win95 OSR 2.1 has IE 4.0 so browsing the web to download tools is a nightmare. Barely any sites will work and you're almost guaranteed to be more hacked than Marriott. The best solution I could find without getting lost in yak shaving was to enable Windows file sharing in the VM. I use a Linux samba client from my host machine to interact with the VM shared folder.
+There are no VirtualBox guest additions for Windows95 which means I couldn't use conventional means to share files between the host and the guest. I tried mounting the VM's FAT32 disk image directly into Linux using various tricks but found it unreliable and annoying because the guest had to be shut down first. Out of the box Win95 OSR 2.1 has IE 4.0 so browsing the web to download tools is a nightmare. Barely any sites will work and prolonged exposure to the wild internet is almost guaranteed to leave you more hacked than Marriott. The best solution I could find without getting lost in yak shaving was to enable Windows file sharing in the VM. I use a Linux samba client from my host machine to interact with the VM shared folder.
 
-File sharing isn't enabled out of the box so after configuring TCP/IP and connecting the virtual cable again (plz don't hack me) I enabled and configured it. To do so yourself:
+File sharing isn't enabled out of the box so after configuring TCP/IP and connecting the virtual cable again (_plz don't hack me_) I enabled and configured it. To do so yourself:
 
 1. Right click Network Neighbourhood and choose properties
 1. Click the ugly button labelled "File and Print Sharing"
-1. Click "I want to be able to give others access to my files"
+1. Click _"I want to be able to give others access to my files"_
 1. Click OK
 1. Insert the Windows 95 install CDROM again if you've removed it
 1. Click Yes to restart your computer (of course you have to restart your computer for this)
@@ -160,7 +160,7 @@ _**Bonus fact:** If you've read [Fabien Sanglard](https://fabiensanglard.net/)'s
 
 At this point I spent most of my time reading the [Borland Turbo Assembler 5.0 manual](https://binaryparadox.net/d/tasm.pdf) and browsing through the WAP32 source code. It was a pretty good starting example for win32 programming in x86 assembly. Once I had a grasp of WAP32 I dipped my toes into some of [Iczelion's tutorials](http://win32assembly.programminghorizon.com/tutorials.html). These are mostly MASM based but work with TASM with minimal fuss. Compared to 2019's version of development tutorials and medium dot com think-pieces I found these older "community style" tutorials very endearing if not always crystal clear.
 
-You might have been surprised to see the `make` command show up in a Win95 dev environment. I admit I was. Initially I assumed it would be something similar to GNU Make and I definitely set myself up for disappointment. Instead it's some kind of proprietary [Borland flavour of Make](ftp://ftp.kis.p.lodz.pl/pub/people/T.Koszmider/Bp/tasm/doc/make.txt) that is missing a lot of what I associate with GNU Make. It takes some getting used to, especially when paired with the lousy `command.exe` shell Win95 offers. Overall its still nicer (to me anyway) than writing BAT files.
+You might have been surprised to see the `make` command show up in a Win95 dev environment. I admit I was. Initially I assumed it would be something similar to GNU Make and I definitely set myself up for disappointment. In reality it's some kind of proprietary [Borland flavour of Make](ftp://ftp.kis.p.lodz.pl/pub/people/T.Koszmider/Bp/tasm/doc/make.txt) that is missing a lot of what I associate with GNU Make. It takes some getting used to, especially when paired with the lousy `command.exe` shell Win95 offers. Overall it's still nicer (_to me anyway_) than writing `BAT` files.
 
 With the dev env ready I can move on to more interesting topics. Next time I'd like to talk about the theory behind PE infectors and some challenges that we'll face compared to standard application development.
 
