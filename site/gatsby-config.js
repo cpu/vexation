@@ -85,5 +85,19 @@ module.exports = {
       },
     },
     `gatsby-plugin-catch-links`,
+    `gatsby-plugin-netlify-cache`,
+    {
+      resolve: `gatsby-plugin-netlify`,
+      options: {
+        headers: {
+          "/*": [
+            "X-Frame-Options: DENY",
+            "X-Content-Type-Options: nosniff",
+            "X-XSS-Protection: 1; mode=block",
+            "Referrer-Policy: strict-origin",
+          ],
+        },
+      },
+    },
   ],
 }
