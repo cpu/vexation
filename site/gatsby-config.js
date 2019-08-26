@@ -87,7 +87,7 @@ module.exports = {
     `gatsby-plugin-catch-links`,
     `gatsby-plugin-netlify-cache`,
     {
-      resolve: `gatsby-plugin-netlify-headers`,
+      resolve: `gatsby-plugin-netlify`,
       options: {
         headers: {
           "/*": [
