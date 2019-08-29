@@ -92,9 +92,9 @@ The [last VeXation post][LastPost] laid the ground work for reliably calling exp
 
 # Complete Assembly
 
-To start working on a solution to the entry point problem I used the [`apisafejector` project code][apisafejector] as a base, copying it into a new directory called [`epjector`][epjector] (short for _"entry-point injector"_ I guess?) and renaming files/includes accordingly.
+To start working on a solution to the entry point problem I used the [`apisafejector` project code][apisafejector] as a base, copying it into a new directory called [`epjector`][epjector] (short for _"entry-point injector"_ I guess?) and renaming files/includes accordingly. The majority of my changes are in [`epjector.asm`][epjector.asm].
 
-The majority of my changes are in [`epjector.asm`][epjector.asm]. To begin with I added two new variables to the `_data` label at [the end of the virus code][DataSection] to save entry point RVAs.
+To begin with I added two new variables to the `_data` label at [the end of the virus code][DataSection] to save entry point RVAs. `DD` is "define double word" and results in a 4 byte variable, matching the size of the `DWORD AddressOfEntryPoint` PE header field.
 
 ```nasm
 ; Original entry-point of to-be infected .exe (or null in generation 0)
