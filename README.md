@@ -66,7 +66,7 @@ executable code is never run this is a very obvious virus, both `calc` and
 
 ## epjector
 
-Accompanying post: [Calling the original entry-point](/entry-points)
+Accompanying post: [Calling the original entry-point](https://log.vexation.ca/entry-points)
 
 "epjector" extends "apisafejector" to handle restoring control flow to the
 infected program's original entrypoint. Now when an infected program is run it

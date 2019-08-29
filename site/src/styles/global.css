@@ -4,12 +4,25 @@ footer {
 }
 
 article {
- font-size: 16px;
+  font-size: 16px;
+}
+
+h1 {
+  color: #355A5E;
 }
 
 a {
+  color: #16A0CC;
   text-shadow: none !important;
   background-image: none !important;
+}
+
+blockquote {
+  border-left: 0.5925rem solid #6EFFA8;
+}
+
+nav a {
+  color: #CC2176;
 }
 
 article section h1 {

@@ -1,10 +1,10 @@
-; REQUIRED_API is a macro that defines two vars: 
+; REQUIRED_API is a macro that defines two vars:
 ;  1. a zero terminated API name
 ;  2. a pointer to the API function
 ; The pointer is populated at runtime by finding the
 ; API name in kernel32.dll using LINK_API
 ;
-; e.g. 
+; e.g.
 ;
 ;   REQUIRED_API ExitProcess
 ;
@@ -20,7 +20,7 @@ REQUIRED_API MACRO var:REQ
   &var    DD 0
 ENDM
 
-; DESC_RUNTIME_API is a macro that creates a PROCDESC prefixed 
+; DESC_RUNTIME_API is a macro that creates a PROCDESC prefixed
 ; with "proc" for a given proc name.
 ;
 ; e.g.
@@ -43,23 +43,23 @@ ENDM
 ; with REQUIRED_API, DESC_RUNTIME_API and LINK_API. The given reg will
 ; be used as a scratch register to load the address of the API to call.
 ; If none is provided, edx is used.
-; 
+;
 ; e.g.
 ;
 ;   CALL_RUNTIME_API GetProcAddress, <ebx,ecx>, eax
 ;
 ; would result in:
 ;
-;   The address of GetProcAddress being put into eax, and called with the 
+;   The address of GetProcAddress being put into eax, and called with the
 ;   arguments ebx and ecx.
-; 
+;
 CALL_RUNTIME_API MACRO name:REQ, args, reg:=<edx>
   mov &reg, [ebp + &name]
   call (type proc&name) PTR &reg, &args
 ENDM
 
-; LINK_API finds the given REQUIRED_API in kernel32.dll by its sz pointer 
-; using GetProcAddress. The API address is saved in the REQUIRED_API 
+; LINK_API finds the given REQUIRED_API in kernel32.dll by its sz pointer
+; using GetProcAddress. The API address is saved in the REQUIRED_API
 ; function pointer for use with CALL_RUNTIME_API. A kernel32Base variable
 ; is expected to hold the base address of kernel32.dll
 LINK_API MACRO var:REQ

