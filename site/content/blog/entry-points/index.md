@@ -94,7 +94,7 @@ The [last VeXation post][LastPost] laid the ground work for reliably calling exp
 
 Like before I started by copying the previous [`apisafejector` project code][apisafejector] into a new directory, this time called [`epjector`][epjector] (_"entry-point injector"_ I guess?).
 
-The majority of my changes were in [`epjector.asm`][epjector.asm]. To begin with I added two new variables to the `_data` label of the virus code.
+The majority of my changes were in [`epjector.asm`][epjector.asm]. To begin with I added two new variables to the `_data` label at [the end of the virus code][DataSection].
 
 ```nasm
 ; Original entry-point of to-be infected .exe (or null in generation 0)
@@ -105,7 +105,7 @@ originalEntryPoint  DD 0
 savedEntryPoint     DD 0
 ```
 
-Next I updated the `@@analyzepe` code to copy the `AddressOfEntryPoint` value of the PE file being considered for infection into the `originalEntryPoint` variable before it is overwritten (respecting the delta offset in `ebp` of course).
+Next I updated the [`@@analyzepe` code][AnalyzePE] to copy the `AddressOfEntryPoint` value of the PE file being considered for infection into the `originalEntryPoint` variable before it is overwritten (respecting the delta offset in `ebp` of course).
 
 ```nasm
 ; At this point we've decided we have found a valid i386 PE and we can
@@ -118,7 +118,7 @@ Next I updated the `@@analyzepe` code to copy the `AddressOfEntryPoint` value of
 
 In generation 0 things are slightly different than in subsequent generations. Generation 0 has no "original" functionality to return execution to after infection. For all other generations the `savedEntryPoint` RVA variable holds the RVA that the infected PE would have executed if it weren't infected.
 
-To populate `savedEntryPoint` I added some new logic at the very start of the virus code immediately after calculating the delta offset to conditionally populate the `savedEntryPoint`:
+To populate `savedEntryPoint` I added some new logic at the very [start of the virus code][SaveOEP] immediately after calculating the delta offset to conditionally populate the `savedEntryPoint`:
 
 ```nasm
 ; If this is not generation 0 then the originalEntryPoint variable will have
@@ -130,7 +130,7 @@ To populate `savedEntryPoint` I added some new logic at the very start of the vi
     mov [ebp + savedEntryPoint], eax
 ```
 
-The last task is refactoring the code labelled `findfirst` and `findnext` to find the correct absolute address to `jmp` to using the `savedEntryPoint` RVA when there are no more `.exe`s to infect.
+The last task is refactoring the code labelled [`findfirst`][FindFirst] and [`findnext`][FindNext] to find the correct absolute address to `jmp` to using the `savedEntryPoint` RVA when there are no more `.exe`s to infect.
 
 Previously if `FindFirstFileA` returned `INVALID_HANDLE_VALUE` (`-1`) or if `FindNextFileA` returned 0 then the virus code would `jmp` to the `error` label to exit the process. I refactored the `epjector` version of this logic to instead `jmp` to a `@@nofirst` or `@@nonext` label that invoke `CALL_OEP`. For example:
 
@@ -139,7 +139,7 @@ Previously if `FindFirstFileA` returned `INVALID_HANDLE_VALUE` (`-1`) or if `Fin
   CALL_OEP
 ```
 
-I chose to implement finding the absolute address for the saved entry-point RVA and jumping to it as a macro called `CALL_OEP`, defined in `macros.inc`. It checks the delta offset stored in `ebp` to decide if the currently executing virus code is generation 0 or not. If it is generation 0 then the delta offset in `ebp` will be 0. If nothing else it was an excuse to learn how to use locally scoped labels in a `tasm` macro.
+I chose to implement finding the absolute address for the saved entry-point RVA and jumping to it as a macro called `CALL_OEP`, [defined in `macros.inc`][macros.inc]. It checks the delta offset stored in `ebp` to decide if the currently executing virus code is generation 0 or not. If it is generation 0 then the delta offset in `ebp` will be 0. If nothing else it was an excuse to learn how to use locally scoped labels in a `tasm` macro.
 
 ```nasm
 ; CALL_OEP is a macro for calling the savedEntryPoint of the
@@ -171,6 +171,12 @@ ENDM
 
 [epjector]: https://github.com/cpu/vexation/tree/master/epjector
 [epjector.asm]: https://github.com/cpu/vexation/tree/master/epjector/epjector.asm
+[DataSection]: https://github.com/cpu/vexation/blob/ef1c6bc24bcd4951db7bc784c4c672f6cd788981/epjector/epjector.asm#L605-L661
+[AnalyzePE]: https://github.com/cpu/vexation/blob/ef1c6bc24bcd4951db7bc784c4c672f6cd788981/epjector/epjector.asm#L322-L327
+[SaveOEP]: https://github.com/cpu/vexation/blob/ef1c6bc24bcd4951db7bc784c4c672f6cd788981/epjector/epjector.asm#L47-L53
+[FindFirst]: https://github.com/cpu/vexation/blob/ef1c6bc24bcd4951db7bc784c4c672f6cd788981/epjector/epjector.asm#L192-L209
+[FindNext]: https://github.com/cpu/vexation/blob/ef1c6bc24bcd4951db7bc784c4c672f6cd788981/epjector/epjector.asm#L224-L240
+[macros.inc]: https://github.com/cpu/vexation/blob/ef1c6bc24bcd4951db7bc784c4c672f6cd788981/epjector/macros.inc#L82-L106
 
 # A more subtle virus
 
