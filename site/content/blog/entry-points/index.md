@@ -1,6 +1,6 @@
 ---
-title: Calling the original entry-point
-date: "2019-08-27T00:00:00.000Z"
+title: Don't be suspicious
+date: "2019-08-29T00:00:00.000Z"
 description: Redirecting control-flow back to an infected program's original entry-point.
 ---
 
@@ -62,7 +62,7 @@ In brief, my process was to:
 
 # A direct solution
 
-I went with a straight forward solution to preserving the original function of infected programs:
+Suspiciously breaking infected applications is a bug in the virus code that is in dire need of fixing. I went with a straight forward solution to preserving the original function of infected programs:
 
 1. Saving the original `AddressOfEntryPoint` value when an executable is infected.
 2. Returning execution to the saved `AddressOfEntryPoint` when the virus is done infecting other programs.
@@ -83,18 +83,18 @@ With the true entry RVA of the infected program accessible the virus code can go
 
 In practice there is one extra wrinkle in the plan: the original entry RVA is just that, a **R**elative **V**irtual **A**ddress. It isn't an absolute address that the virus code can `jmp` right to. Instead it's an offset relative to the address the executable was loaded at by the operating system's [loader][Loader].
 
-In order to figure out the absolute address to `jmp` to the virus code needs to be able to find out what address the operating system happened to load the executable that it is running out of. I decided to use the win32 [`GetModuleHandleA`][GetModuleHandleA] function exported by `kernel32.dll` to find this. By providing a `NULL` value for the `lpModuleName` argument `GetModuleHandleA` returns the base address of the executing `.exe`.
+In order to figure out the absolute address to `jmp` to the virus code needs to be able to find out what address the operating system happened to load the executable that it is running out of (often called the _base address_). I decided to use the win32 [`GetModuleHandleA`][GetModuleHandleA] function exported by `kernel32.dll` to find this. By providing a `NULL` value for the `lpModuleName` argument `GetModuleHandleA` returns the base address of the executing `.exe`.
 
-The [last VeXation post][LastPost] laid the ground work for reliably calling exported `kernel32.dll` functions from the virus code which made it straight-forward to use `GetModuleHandleA` to find the executable's base address. By combining the base address with the saved original entry RVA the virus code has an absolute address to jump to.
+The [last VeXation post][LastPost] laid the ground work for reliably calling exported `kernel32.dll` functions from the virus code which made it straight-forward to use `GetModuleHandleA` to find the executable's base address. By combining the base address with the saved original entry RVA the virus code has an absolute address to `jmp` to so the infected program can start to run normally.
 
 [Loader]: https://en.wikipedia.org/wiki/Loader_(computing)
 [GetModuleHandleA]: https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulehandlea
 
 # Complete Assembly
 
-Like before I started by copying the previous [`apisafejector` project code][apisafejector] into a new directory, this time called [`epjector`][epjector] (_"entry-point injector"_ I guess?).
+To start working on a solution to the entry point problem I used the [`apisafejector` project code][apisafejector] as a base, copying it into a new directory called [`epjector`][epjector] (short for _"entry-point injector"_ I guess?) and renaming files/includes accordingly.
 
-The majority of my changes were in [`epjector.asm`][epjector.asm]. To begin with I added two new variables to the `_data` label at [the end of the virus code][DataSection].
+The majority of my changes are in [`epjector.asm`][epjector.asm]. To begin with I added two new variables to the `_data` label at [the end of the virus code][DataSection] to save entry point RVAs.
 
 ```nasm
 ; Original entry-point of to-be infected .exe (or null in generation 0)
@@ -116,9 +116,7 @@ Next I updated the [`@@analyzepe` code][AnalyzePE] to copy the `AddressOfEntryPo
   mov [ebp + originalEntryPoint], ecx
 ```
 
-In generation 0 things are slightly different than in subsequent generations. Generation 0 has no "original" functionality to return execution to after infection. For all other generations the `savedEntryPoint` RVA variable holds the RVA that the infected PE would have executed if it weren't infected.
-
-To populate `savedEntryPoint` I added some new logic at the very [start of the virus code][SaveOEP] immediately after calculating the delta offset to conditionally populate the `savedEntryPoint`:
+To populate `savedEntryPoint` I added some new logic at the very [start of the virus code][SaveOEP] immediately after calculating the delta offset:
 
 ```nasm
 ; If this is not generation 0 then the originalEntryPoint variable will have
@@ -132,14 +130,18 @@ To populate `savedEntryPoint` I added some new logic at the very [start of the v
 
 The last task is refactoring the code labelled [`findfirst`][FindFirst] and [`findnext`][FindNext] to find the correct absolute address to `jmp` to using the `savedEntryPoint` RVA when there are no more `.exe`s to infect.
 
-Previously if `FindFirstFileA` returned `INVALID_HANDLE_VALUE` (`-1`) or if `FindNextFileA` returned 0 then the virus code would `jmp` to the `error` label to exit the process. I refactored the `epjector` version of this logic to instead `jmp` to a `@@nofirst` or `@@nonext` label that invoke `CALL_OEP`. For example:
+Previously if `FindFirstFileA` returned `INVALID_HANDLE_VALUE` (`-1`) or if `FindNextFileA` returned 0 then the virus code would `jmp` to the `error` label to exit the process. I refactored the `epjector` version of this logic to instead `jmp` to a `@@nofirst` or `@@nonext` label that invokes `CALL_OEP`. For example:
 
 ```nasm
 @@nofirst:
   CALL_OEP
 ```
 
-I chose to implement finding the absolute address for the saved entry-point RVA and jumping to it as a macro called `CALL_OEP`, [defined in `macros.inc`][macros.inc]. It checks the delta offset stored in `ebp` to decide if the currently executing virus code is generation 0 or not. If it is generation 0 then the delta offset in `ebp` will be 0. If nothing else it was an excuse to learn how to use locally scoped labels in a `tasm` macro.
+In generation 0 things are slightly different than in subsequent generations. Generation 0 has no "original" functionality to return execution to after infection. For all other generations the `savedEntryPoint` variable holds the RVA that the operating system loader would have used if the program wasn't infected.
+
+I chose to implement finding the absolute address for the saved entry-point RVA and jumping to it as a macro called `CALL_OEP`, [defined in `macros.inc`][macros.inc]. 
+
+The macro checks the delta offset stored in `ebp` to decide if the currently executing virus code is generation 0 or not. If it is generation 0 then the macro evaluates to being the same as the old `apisafejector` behaviour, a `jmp` to the `error` label. For generations 1+ the macro evaluates to code that will `jmp` to the correct absolute address using the `savedEntryPoint`.
 
 ```nasm
 ; CALL_OEP is a macro for calling the savedEntryPoint of the
@@ -209,7 +211,7 @@ There are a few directions I have in mind for future posts:
 
 * Building out a payload. The virus needs to **do** something besides propagate itself.
 * Improving the infection strategy. The virus should recurse outside of the current directory.
-* Discussing AV. I'd like to summarizing the most glaring "stealth" problems with the current virus and share some results from running AV against it as-is.
+* Discussing AV. I'd like to summarize the most glaring "stealth" problems with the current virus and share some results from running AV against it as-is.
 
 As always, I would love to hear feedback about this project. It would also be useful to know if one of the above directions interests you more than others. Feel free to drop me a line on twitter ([@cpu][twitter]) or by email ([daniel@binaryparadox.net][email]).
 
