@@ -34,7 +34,7 @@ mov (IMAGE_NT_HEADERS [ecx]).OptionalHeader.AddressOfEntryPoint, eax
 >
 > The address where the loader will begin execution. This is an RVA, and can usually be found in the .text section.
 
-In the case of `apisafejector` the virus stomps the original `AddressOfEntryPoint` RVA that pointed into the `.text` section with one that points into the `.ireloc` section where the injected virus code is. Importantly the injected virus code never invokes the original executable code that lays dormant in the original `.text` section.
+In the case of `apisafejector` the virus stomps an infected program's true `AddressOfEntryPoint` RVA, replacing the one that pointed into the `.text` section with one that points into the `.ireloc` section where the injected virus code is. Importantly the injected virus code never invokes the program's real executable code that lays dormant in the `.text` section.
 
 From a user experience perspective this means infected programs appear broken - they don't do anything when they are run (_except silently infect other executables of course_). This kind of side-effect is unnecessarily destructive and sure to bring attention to the virus prematurely.
 
