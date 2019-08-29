@@ -43,8 +43,8 @@ base address, locate the `GetProcAddress` export in the DLL, and then
 resolve required Windows API function addresses with `GetProcAddress`.
 
 "apifind2" reduces some duplication by providing assembly macros for defining
-requiring API variables, describing the API functions/arguments, finding the API
-function address, and finally invoking the API function. Start by reading
+required API variables, describing the API functions/arguments, finding the API
+function addresses, and finally invoking the API functions. Start by reading
 "apifind" and then compare with "apifind2".
 
 ## apisafejector
@@ -63,3 +63,13 @@ virus that is truly viral. Running `apisafejector.exe` in the same directory as
 `cdplayer.exe`) will infect that executable. Of course since the original
 executable code is never run this is a very obvious virus, both `calc` and
 `cdplayer` will appear broken :-)
+
+## epjector
+
+Accompanying post: [Calling the original entry-point](https://log.vexation.ca/entry-points)
+
+"epjector" extends "apisafejector" to handle restoring control flow to the
+infected program's original entrypoint. Now when an infected program is run it
+will try to propagate the infection as before but when it's done it will run the
+original program. Now `calc.exe` and `cdplayer.exe` will not appear broken while
+also spreading the infection >:)

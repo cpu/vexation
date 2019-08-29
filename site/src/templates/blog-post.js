@@ -77,7 +77,7 @@ class BlogPostTemplate extends React.Component {
                   cursor: `pointer`,
                   background: `none`,
                   border: `0`,
-                  color: `#134896`,
+                  color: `#CC2176`,
                 }}
                 onClick={ () => { this.scrollToTop(); }}>
               ↑ Back to top
