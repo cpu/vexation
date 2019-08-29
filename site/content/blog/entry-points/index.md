@@ -28,13 +28,13 @@ One of the steps that `apisafejector` takes in order to get the appended virus c
 mov (IMAGE_NT_HEADERS [ecx]).OptionalHeader.AddressOfEntryPoint, eax
 ```
 
-The [Peering inside the PE][PEPeering] post describes this field as:
+["Peering inside the PE"][PEPeering] describes this field as:
 
 > DWORD AddressOfEntryPoint
 >
 > The address where the loader will begin execution. This is an RVA, and can usually be found in the .text section.
 
-In the case of `apisafejector` the virus stomps the original `AddressOfEntryPoint` RVA that pointed into the `.text` section with one that points into the `.ireloc` section where the virus code is. The virus code never invokes the original executable code that lays dormant in the original `.text` section.
+In the case of `apisafejector` the virus stomps the original `AddressOfEntryPoint` RVA that pointed into the `.text` section with one that points into the `.ireloc` section where the injected virus code is. Importantly the injected virus code never invokes the original executable code that lays dormant in the original `.text` section.
 
 From a user experience perspective this means infected programs appear broken - they don't do anything when they are run (_except silently infect other executables of course_). This kind of side-effect is unnecessarily destructive and sure to bring attention to the virus prematurely.
 
@@ -62,28 +62,28 @@ In brief, my process was to:
 
 # A direct solution
 
-The straight forward solution I landed on is two-fold:
+I went with a straight forward solution to preserving the original function of infected programs:
 
 1. Saving the original `AddressOfEntryPoint` value when an executable is infected.
 2. Returning execution to the saved `AddressOfEntryPoint` when the virus is done infecting other programs.
 
 # Saving the original entry RVA
 
-If you remember the previous [delta offets][DeltaOffsets] post then you already know that the virus code and the virus variables are  all in the same PE section. That makes everything self-contained and easier to inject into a new executable.
+If you remember the previous [delta offets][DeltaOffsets] post then you already know that the virus _code_ and the virus _variables_ are  all in the same PE section. That makes everything self-contained and easier to inject into a new executable.
 
 Another happy side-effect of this approach is that it's easy for one generation of the virus to "pre-populate" variables for the next generation of the virus. When the executing virus code copies itself into the `.ireloc` section of the target executable it will copy its variables with their current values in-tact.
 
-Crucially this means if the currently executing virus code saves the victim program's original entry point RVA value in a variable before it stomps it then the original value will be accessible to the new copy of the virus code later on when the infected program is run.
+Crucially this means that if the virus saves the original `AddressOfEntryPoint` value of a victim program before it injects itself and stomps the entry point then it will be accessible to the injected virus code later on.
 
 [DeltaOffsets]: /delta-offset
 
 # Jumping to the original entry RVA
 
-With the true entry RVA of the infected program accessible the virus code can go about redirecting execution back to the original program. It should just be a matter of `jmp`ing over to the original entry point address.
+With the true entry RVA of the infected program accessible the virus code can go about redirecting execution back to the original program by `jmp`ing to it.
 
 In practice there is one extra wrinkle in the plan: the original entry RVA is just that, a **R**elative **V**irtual **A**ddress. It isn't an absolute address that the virus code can `jmp` right to. Instead it's an offset relative to the address the executable was loaded at by the operating system's [loader][Loader].
 
-In order to figure out the absolute address to `jmp` to the virus code needs to be able to find out what address the operating system happened to load the executable that it is running out of. I decided to use a function from the Win32 API to do this [`GetModuleHandleA`][GetModuleHandleA] exported by `kernel32.dll`. By providing a `NULL` value for the `lpModuleName` argument `GetModuleHandleA` will return the base address of the executing `.exe`.
+In order to figure out the absolute address to `jmp` to the virus code needs to be able to find out what address the operating system happened to load the executable that it is running out of. I decided to use the win32 [`GetModuleHandleA`][GetModuleHandleA] function exported by `kernel32.dll` to find this. By providing a `NULL` value for the `lpModuleName` argument `GetModuleHandleA` returns the base address of the executing `.exe`.
 
 The [last VeXation post][LastPost] laid the ground work for reliably calling exported `kernel32.dll` functions from the virus code which made it straight-forward to use `GetModuleHandleA` to find the executable's base address. By combining the base address with the saved original entry RVA the virus code has an absolute address to jump to.
 
@@ -92,7 +92,7 @@ The [last VeXation post][LastPost] laid the ground work for reliably calling exp
 
 # Complete Assembly
 
-Like before I started by copying the previous [`apisafejector` project code][apisafejector] into a new directory, this time called [`epjector`][epjector] (_"entry point injector"_ I guess?).
+Like before I started by copying the previous [`apisafejector` project code][apisafejector] into a new directory, this time called [`epjector`][epjector] (_"entry-point injector"_ I guess?).
 
 The majority of my changes were in [`epjector.asm`][epjector.asm]. To begin with I added two new variables to the `_data` label of the virus code.
 
@@ -105,7 +105,7 @@ originalEntryPoint  DD 0
 savedEntryPoint     DD 0
 ```
 
-Next I updated the `@@analyzepe` code to copy the `AddressOfEntryPoint` of the PE file being considered for infection to the `originalEntryPoint` variable before it is overwritten.
+Next I updated the `@@analyzepe` code to copy the `AddressOfEntryPoint` value of the PE file being considered for infection into the `originalEntryPoint` variable before it is overwritten (respecting the delta offset in `ebp` of course).
 
 ```nasm
 ; At this point we've decided we have found a valid i386 PE and we can
@@ -116,28 +116,30 @@ Next I updated the `@@analyzepe` code to copy the `AddressOfEntryPoint` of the P
   mov [ebp + originalEntryPoint], ecx
 ```
 
-In generation 0 there should be no RVA in the `savedEntryPoint` variable. There's no "original" functionality to return execution to after infection. For all other generations the `savedEntryPoint` RVA should be the RVA that the infected PE would have executed if it weren't infected.
+In generation 0 things are slightly different than in subsequent generations. Generation 0 has no "original" functionality to return execution to after infection. For all other generations the `savedEntryPoint` RVA variable holds the RVA that the infected PE would have executed if it weren't infected.
 
-To achieve this I added some new logic at the very start of the virus code immediately after calculating the delta offset to conditionally populate the `savedEntryPoint`:
+To populate `savedEntryPoint` I added some new logic at the very start of the virus code immediately after calculating the delta offset to conditionally populate the `savedEntryPoint`:
 
 ```nasm
 ; If this is not generation 0 then the originalEntryPoint variable will have
 ; been set when the currently executing PE was infected. We need to stash that
 ; somewhere we can JMP to later. We'll be writing over originalEntryPoint when
-; we find a target to infect and propogate another generation.
+; we find a target to infect and propagate another generation.
 @@saveoep:
     mov eax, [ebp + originalEntryPoint]
     mov [ebp + savedEntryPoint], eax
 ```
 
-The last task is refactoring the code labelled `findfirst` and `findnext` to find the correct absolute address to `jmp` to for the `savedEntryPoint` RVA when there are no more `.exe`s to infect. Previously if `FindFirstFileA` returned `INVALID_HANDLE_VALUE` (`-1`) or `FindNextFileA` returned 0 then the virus code would `jmp` to the `error` label to exit the process. I refactored the `epjector` version of this logic to instead `jmp` to a `@@nofirst` or `@@nonext` label that invoke `CALL_OEP`:
+The last task is refactoring the code labelled `findfirst` and `findnext` to find the correct absolute address to `jmp` to using the `savedEntryPoint` RVA when there are no more `.exe`s to infect.
+
+Previously if `FindFirstFileA` returned `INVALID_HANDLE_VALUE` (`-1`) or if `FindNextFileA` returned 0 then the virus code would `jmp` to the `error` label to exit the process. I refactored the `epjector` version of this logic to instead `jmp` to a `@@nofirst` or `@@nonext` label that invoke `CALL_OEP`. For example:
 
 ```nasm
 @@nofirst:
   CALL_OEP
 ```
 
-I chose to implement finding the absolute address for the saved entry point RVA and jumping to it as a macro called `CALL_OEP`, defined in `macros.inc`. It checks the delta offset stored in `ebp` to decide if the currently executing virus code is generation 0 or not. If it is generation 0 then the delta offset in `ebp` will be 0.
+I chose to implement finding the absolute address for the saved entry-point RVA and jumping to it as a macro called `CALL_OEP`, defined in `macros.inc`. It checks the delta offset stored in `ebp` to decide if the currently executing virus code is generation 0 or not. If it is generation 0 then the delta offset in `ebp` will be 0. If nothing else it was an excuse to learn how to use locally scoped labels in a `tasm` macro.
 
 ```nasm
 ; CALL_OEP is a macro for calling the savedEntryPoint of the

