@@ -64,8 +64,8 @@ In brief, my process was to:
 
 Suspiciously breaking infected applications is a bug in the virus code that is in dire need of fixing. I went with a straight forward solution for preserving the original function of infected programs:
 
-1. Saving the original `AddressOfEntryPoint` value when an executable is infected.
-2. Returning execution to the saved `AddressOfEntryPoint` when the virus is done infecting other programs.
+1. Saving the original `AddressOfEntryPoint` value when an executable is infected into the virus code that is injected into the infected program.
+2. Returning execution to the `AddressOfEntryPoint` saved in the virus code when the infected program is done propagating the infection.
 
 # Saving the original entry RVA
 
