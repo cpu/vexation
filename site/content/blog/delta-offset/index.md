@@ -65,7 +65,7 @@ Since the virus code was using **two** sections (`CODE` and `DATA`) in the origi
 
 # Code is Data is Code
 
-It's tempting to think about fixing this problem by duplicating the process generation 0 uses to copy its `CODE` section to the injected `.ireloc` section and using it to also copy a `DATA` section. Overall this approach seemed like  to methe wrong solution to me. It will be more complex managing injecting multiple sections and as mentioned in the <a href="/pe-infector-basics">previous post</a> adding a new section is already pretty clumsy from an AV evasion perspective. Continuing to pile new sections into a target isn't very appealing.
+It's tempting to think about fixing this problem by duplicating the process generation 0 uses to copy its `CODE` section to the injected `.ireloc` section and using it to also copy a `DATA` section. Overall this approach seemed like the wrong solution to me. It will be more complex managing injecting multiple sections and as mentioned in the <a href="/pe-infector-basics">previous post</a> adding a new section is already pretty clumsy from an AV evasion perspective. Continuing to pile new sections into a target isn't very appealing.
 
 The route I decided to follow was to remove the `DATA` section entirely and have the virus maintain and update variables inside of its existing `CODE` section. I started by copying the `minijector` folder from the [VeXation repo](https://github.com/cpu/vexation) to create [a `pijector` folder](https://github.com/cpu/vexation/tree/master/pijector) (_position independent (in)jector, get it?_). Updating all of the old `"minijector"` references in the `Makefile`, `.inc`, `.def`, and `.asm` files was enough to get started on a position independent version of `minijector`.
 

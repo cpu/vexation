@@ -201,12 +201,12 @@ Since the task of finding win32 API function addresses from `kernel32.dll` at ru
 
 I decided to call the standalone program `apifind` since that's what it was going to do. At a high level the `apifind` code:
 
-1. Finds the `kernel32.dll`'s base address
+1. Finds `kernel32.dll`'s base address
 1. Finds `kernel32.dll`'s `IMAGE_EXPORT_DIRECTORY` structure
 1. Finds the index of `GetProcAddress` in `IMAGE_EXPORT_DIRECTORY.AddressOfNames`
 1. Uses the index to find the `GetProcAddress` ordinal in `IMAGE_EXPORT_DIRECTORY.AddressOfNameOrdinals`.
 1. Uses the ordinal of `GetProcAddress` to find the export RVA in `IMAGE_EXPORT_DIRECTORY.AddressOfFunctions`
-1. Uses the discovered RVA of `GetProcAddress` to find other required APIs (e.g. `kernel32.FindFirstFileA`.
+1. Uses the discovered RVA of `GetProcAddress` to find other required APIs (e.g. `kernel32.FindFirstFileA`).
 
 The complete assembly code for `apifind` is available [in the VeXation Github repo](https://github.com/cpu/vexation/tree/master/apifind).
 
