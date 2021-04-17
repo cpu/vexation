@@ -135,6 +135,11 @@ Let's talk through the more interesting `qemu-system-i386` parameters:
 * `-boot order=a` - this configures the VM to boot from the boot floppy.
 * `--enable-kvm` - this enables KVM virtualization and makes the VM much faster.
 
+Before figuring out the right `-audiodev` setting the sound "worked" but in
+a way that resulted in some pretty interesting remixes...
+
+`youtube: `https://youtu.be/NGOFX_QpfEQ`
+
 After the initial setup the same command can be used to boot the VM, but the
 `-boot order=a` parameter should be changed to `-boot order=c`. I definitely
 recommend making an alias or small script to avoid having to remember all of
@@ -273,27 +278,27 @@ services.samba = {
   enable = true;
   securityType = "user";
   extraConfig = ''
-  workgroup = WORKGROUP
-  server string = NOIR
-  netbios name = NOIR
-  security = user
-  hosts allow = localhost
-  hosts deny = 0.0.0.0/0
-  guest account = nobody
-  map to guest = bad user
-  load printers = no
-  server min protocol = LANMAN1
-'';
-shares = {
-  portal = {
-    path = "/mnt/portal";
-    browseable = "yes";
-    "read only" = "no";
-    "guest ok" = "yes";
-    "create mask" = "0644";
-    "directory mask" = "0755";
+    workgroup = WORKGROUP
+    server string = NOIR
+    netbios name = NOIR
+    security = user
+    hosts allow = localhost
+    hosts deny = 0.0.0.0/0
+    guest account = nobody
+    map to guest = bad user
+    load printers = no
+    server min protocol = LANMAN1
+  '';
+  shares = {
+    portal = {
+      path = "/mnt/portal";
+      browseable = "yes";
+      "read only" = "no";
+      "guest ok" = "yes";
+      "create mask" = "0644";
+      "directory mask" = "0755";
+    };
   };
- };
 };
 ...
 ```
@@ -325,7 +330,7 @@ line). This file needs to be updated to contain:
 
 Finally (after a reboot for good measure) it's possible to open `\\NOIR\PORTAL`
 in the VM and share files to/from the host machine, all without broadly exposing
-the VM (or its file-sharing) to the wider network. Nice!
+the VM (or its file-sharing) to the wider internet. Nice!
 
 ![File sharing between host and VM](lmhosts.png)
 
