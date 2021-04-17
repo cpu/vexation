@@ -138,7 +138,7 @@ Let's talk through the more interesting `qemu-system-i386` parameters:
 Before figuring out the right `-audiodev` setting the sound "worked" but in
 a way that resulted in some pretty interesting remixes...
 
-`youtube: `https://youtu.be/NGOFX_QpfEQ`
+`youtube: https://youtu.be/NGOFX_QpfEQ`
 
 After the initial setup the same command can be used to boot the VM, but the
 `-boot order=a` parameter should be changed to `-boot order=c`. I definitely
