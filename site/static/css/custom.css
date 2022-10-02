@@ -100,3 +100,7 @@ figcaption {
   padding-top: 0.5em;
   text-align: center;
 }
+
+pre code {
+  font-family: monospace !important;
+}
