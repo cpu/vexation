@@ -2,6 +2,10 @@
 title: PE File Infector Basics
 date: "2019-01-30T00:00:00.000Z"
 summary: Starting on an x86 virus that can inject new sections into PE executables.
+aliases:
+    - /2019/01/pe-file-infector-basics
+    - /2019/01/pe-file-infector-basics.html
+    - /pe-infector-basics/
 ---
 
 Welcome back! If this is your first visit to VeXation you may want to start by [reading an introduction to the project](../welcome) or [the development environment setup](../setup). In this post I'll share some of my experience starting out on my Windows 95 file infector virus.

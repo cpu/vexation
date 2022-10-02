@@ -2,6 +2,10 @@
 title: Getting set up
 date: "2019-01-17T00:00:00.000Z"
 summary: Setting up Win95, file sharing, and Borland Turbo Assembler 5.0
+aliases:
+    - /2019/01/getting-set-up
+    - /2019/01/getting-set-up.html
+    - /setup/
 ---
 
 Virus writing starts with a development environment. Here's how I set up a Windows 95 VM and my development tools. If this is your first visit to VeXation you might want to start by reading the ["Welcome" post introducing the project](../welcome).

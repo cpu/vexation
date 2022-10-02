@@ -2,6 +2,10 @@
 title: Using kernel32.dll exports like a virus
 date: "2019-04-22T00:00:00.000Z"
 summary: Dynamically finding the Win95 kernel32.dll base address and exported APIs.
+aliases:
+    - /2019/04/using-win95-kernel32dll-exports-like
+    - /2019/04/using-win95-kernel32dll-exports-like.html
+    - /kernel32-dll-exports/
 ---
 
 Welcome back! If this is your first visit to VeXation you may want to start by reading about [the project](../welcome), the [development environment](../setup), the work in progress [PE infector virus](../pe-infector-basics), or the previous post about [delta offsets](../delta-offset).

@@ -21,6 +21,9 @@ enableEmoji = true
   github = 'https://github.com/cpu/vexation'
   twitter = 'https://twitter.com/cpu'
 
+[permalinks]
+  posts = '/:year/:month/:title'
+
 [params]
   author = 'Daniel McCarney'
   description = 'VeXation is an on-going project by @cpu exploring retro computer virus development.'

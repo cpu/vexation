@@ -2,6 +2,10 @@
 title: Delta Offsets
 date: "2019-03-11T00:00:00.000Z"
 summary: Using the "delta offset" approach to make the PE infector virus position independent.
+aliases:
+    - /2019/03/a-vxers-best-friend-delta-offset
+    - /2019/03/a-vxers-best-friend-delta-offset.html
+    - /delta-offset
 ---
 
 Welcome back! If this is your first visit to VeXation you may want to start by reading about [the project](../welcome), the [development environment](../setup), or the work in progress [PE infector virus](../pe-infector-basics) I'm extending in this post.

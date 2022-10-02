@@ -2,6 +2,9 @@
 title: Let's write a virus
 date: "2019-01-14T00:00:00.000Z"
 summary: A trip back to the 1990s and a journey into Win95 virus development.
+aliases:
+    - /2019/01/welcome-to-vexation
+    - /welcome/
 ---
 
 Over the 2018 Christmas holiday I decided to sit down and start on a project that has been on my mind for a long time: writing a 90s computer virus. This blog exists to chronicle my progress and hopefully spark your interest in retro computer viruses.
