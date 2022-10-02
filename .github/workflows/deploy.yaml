@@ -1,0 +1,32 @@
+name: Deploy to GH pages
+
+on:
+  push:
+    branches:
+      - cpu-hugo-plz
+      - master
+
+jobs:
+  deploy:
+    name: Deploy job
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Nix Flakes doesn't work on shallow clones
+
+      - name: Install nix with flakes
+        uses: cachix/install-nix-action@v17
+
+      - name: Build static site
+        run: nix build
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site/result

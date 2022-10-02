@@ -1,0 +1,43 @@
+{{ $src := .Page.Resources.GetMatch (printf "%s" (.Destination | safeURL))  }}
+{{ $alt := .PlainText | safeHTML }}
+
+{{ if $src }}
+  {{ $tinyw := default "400x webp" }}
+  {{ $smallw := default "600x webp" }}
+  {{ $mediumw := default "800x webp" }}
+
+  {{ $data := newScratch }}
+  {{ $data.Set "tiny" ($src.Resize $tinyw) }}
+  {{ $data.Set "small" ($src.Resize $smallw) }}
+  {{ $data.Set "medium" ($src.Resize $mediumw) }}
+
+  {{ $tiny := $data.Get "tiny" }}
+  {{ $small := $data.Get "small" }}
+  {{ $medium := $data.Get "medium" }}
+
+<p class="markdown-image">
+{{ if .Title }}
+<figure>
+{{ end }}
+  <a href="{{ $src.RelPermalink }}">
+    <picture>
+      <source
+        media="(max-width: 420px)" 
+        srcset="{{with $tiny.RelPermalink }}{{.}}{{ end }}">
+      <source
+        media="(max-width: 920px)" 
+        srcset="{{with $small.RelPermalink }}{{.}}{{ end }}">
+      <source
+        media="(max-width: 1400px)"
+        srcset="{{with $medium.RelPermalink }}{{.}}{{ end }}">
+      <img
+          alt="{{ $alt }}" title="{{ $alt }}" src="{{ $src }}" 
+          loading="lazy" class="img-fluid">
+    </picture>
+  </a>
+{{ if .Title }}
+  <figcaption>{{ .Title }}</figcaption>
+</figure>
+{{ end }}
+</p>
+{{ end }}

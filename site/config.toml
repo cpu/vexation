@@ -1,0 +1,31 @@
+baseURL = 'https://log.vexation.ca/'
+languageCode = 'en-us'
+title = 'VeXation'
+theme = "mini"
+copyright = "Daniel McCarney"
+enableEmoji = true
+#enableGitInfo = true
+
+[markup]
+  [markup.highlight]
+    style = 'monokai'
+    tabwidth = 2
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.tableOfContents]
+    endLevel = 2
+    ordered = false
+    startLevel = 1
+
+[social]
+  github = 'https://github.com/cpu/vexation'
+  twitter = 'https://twitter.com/cpu'
+
+[params]
+  author = 'Daniel McCarney'
+  description = 'VeXation is an on-going project by @cpu exploring retro computer virus development.'
+  enableRSS = true
+  showToc = true
+  showPowerBy = false
+  hiddenPostSummaryInHomePage = false
+  customCSS = [ 'css/custom.css' ]
