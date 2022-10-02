@@ -37,7 +37,6 @@
               mkdir -p $out
               cd site
               hugo --minify --destination $out
-              echo 'log.vexation.ca' > $out/CNAME
               runHook postBuild
             '';
             dontInstall = true;
