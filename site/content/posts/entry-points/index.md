@@ -2,6 +2,10 @@
 title: Don't be suspicious
 date: "2019-08-29T00:00:00.000Z"
 summary: Redirecting control-flow back to an infected program's original entry-point.
+aliases:
+    - /2019/08/dont-be-suspicious
+    - /2019/08/dont-be-suspicious.html
+    - /entry-points/
 ---
 
 Welcome back! If this is your first visit to VeXation you may want to start at [the beginning][Start].
