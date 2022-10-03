@@ -16,7 +16,7 @@ Welcome back! If this is your first visit to VeXation you may want to start by r
 
 # Recap
 
-At the end of the [last post][pe-infector] I completed [`minijector`](https://github.com/cpu/vexation/tree/cpu-pijector-wip/minijector), a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the to-be-infected target. There are a handful of shortcomings that prevent `minijector` from being a real functional virus. To recap, the virus code quickly falls apart for generations after 0:
+At the end of the [last post][pe-infector] I completed [`minijector`](https://github.com/cpu/vexation/tree/main/minijector), a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the to-be-infected target. There are a handful of shortcomings that prevent `minijector` from being a real functional virus. To recap, the virus code quickly falls apart for generations after 0:
 
 1. The virus code relies on a data section that isn't copied into the infected program. Variable references will all be broken.
 1. The way the virus code uses Win32 API functions will not work - a layer of indirection was broken and the first API function call will crash.
