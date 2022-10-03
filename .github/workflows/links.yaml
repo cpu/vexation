@@ -1,0 +1,47 @@
+# Link Checker Workflow for Cron.
+# Doesn't use 'fail:true', uses create-issue-from-file to automate creation of
+# a repo issue for deadlink findings.
+name: Links
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+  schedule:
+    - cron: "00 17 * * *"
+
+jobs:
+  linkChecker:
+    name: Link Checker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Nix Flakes doesn't work on shallow clones
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+
+      - name: Build static site
+        run: nix build
+
+      - name: Check links
+        id: lychee
+        uses: lycheeverse/lychee-action@v1.5.1
+        with:
+          args: "--verbose \
+                 --exclude-mail \
+                 'site/result/**/*.md' 'site/result/**/*.html'"
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Create Issue From File
+        if: steps.lychee.outputs.exit_code != 0
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: Link Checker Report
+          content-filepath: ./lychee/out.md
+          labels: report, automated issue
