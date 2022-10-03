@@ -2,6 +2,10 @@
 title: Switching to QEMU
 date: "2021-04-17T00:00:00.000Z"
 summary: Setting up a Win95 dev VM in QEMU.
+aliases:
+    - /2021/04/switching-to-qemu
+    - /2021/04/switching-to-qemu.html
+    - /setup-qemu/
 ---
 
 Welcome back! If this is your first visit to VeXation you may want to start at
