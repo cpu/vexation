@@ -2,10 +2,10 @@
 <a href=/posts>Archive</a>
 <a href=/about>About</a>
 <a class=button href=https://log.vexation.ca/index.xml>Subscribe</a></nav><main class=main><section id=single><h1 class=title>Switching to QEMU</h1><div class=tip><time datetime="2021-04-17 00:00:00 +0000 UTC">Apr 17, 2021</time></div><aside class=toc><details><summary>Table of Contents</summary><div><nav id=TableOfContents><ul><li><a href=#recap-and-yak-shaving>Recap and Yak Shaving</a></li><li><a href=#qemukvm>QEMU/KVM</a></li><li><a href=#windows-95-setup>Windows 95 Setup</a><ul><li><a href=#preparation>Preparation</a></li><li><a href=#creating-the-vm>Creating the VM</a></li><li><a href=#installing-windows>Installing Windows</a></li><li><a href=#networking-and-file-sharing>Networking and File-Sharing</a></li><li><a href=#configuring-file-sharing>Configuring File-Sharing</a></li></ul></li><li><a href=#conclusion>Conclusion</a></li></ul></nav></div></details></aside><div class=content><p>Welcome back! If this is your first visit to VeXation you may want to start at
-<a href=../welcome>the beginning</a>.</p><h1 id=recap-and-yak-shaving>Recap and Yak Shaving <a href=#recap-and-yak-shaving class=anchor>🔗</a></h1><p>It&rsquo;s been some time since the <a href=../entry-points>last post</a> and I was looking for a light
+<a href=/2019/01/lets-write-a-virus/>the beginning</a>.</p><h1 id=recap-and-yak-shaving>Recap and Yak Shaving <a href=#recap-and-yak-shaving class=anchor>🔗</a></h1><p>It&rsquo;s been some time since the <a href=/2019/08/dont-be-suspicious/>last post</a> and I was looking for a light
 way to get back into the swing of things. Return readers might recall that I&rsquo;ve
 been doing all of the VeXation development in a Windows 95 VM running in
-VirtualBox. I described the setup for this environment in <a href=../setup>the second post in
+VirtualBox. I described the setup for this environment in <a href=/2019/01/getting-set-up/>the second post in
 the series</a> based on a popular <a href=https://socket3.wordpress.com/2016/09/06/install-configure-windows-95-using-oracle-virtualbox/ target=_blank rel=noopener>blog post</a> by socket3.</p><p>Recently I&rsquo;ve been using <a href=https://nixos.org/ target=_blank rel=noopener>NixOS</a> on my laptop and I&rsquo;ve been really happy
 with the clean config I&rsquo;ve arrived at. It felt crummy to sully my new system
 with the (<a href=https://lkml.org/lkml/2011/10/6/317 target=_blank rel=noopener>dubious quality</a>) VirtualBox kernel module just to
@@ -35,7 +35,7 @@ result in warnings with modern QEMU. It also describes a clunky process for
 digging through the virtual NIC&rsquo;s settings post-install to fix networking that
 isn&rsquo;t necessary with some additional CLI flags. With some trial and error I was
 able to arrive at a process that used up-to-date CLI flags and needed no
-post-install messing around with IRQs.</p><h2 id=preparation>Preparation <a href=#preparation class=anchor>🔗</a></h2><p>Like the <a href=../setup>first setup post</a> I needed to gather a few resources before
+post-install messing around with IRQs.</p><h2 id=preparation>Preparation <a href=#preparation class=anchor>🔗</a></h2><p>Like the <a href=/2019/01/getting-set-up/>first setup post</a> I needed to gather a few resources before
 starting:</p><ul><li><a href=https://winworldpc.com/product/windows-95/osr-21 target=_blank rel=noopener>Windows 95 OSR2.1 OEM CD</a>.</li><li><a href=https://winworldpc.com/product/microsoft-windows-boot-disk/95-osr2x target=_blank rel=noopener>Windows 95 OSR2.X boot floppy</a>.</li><li>Windows 95 OEM License Key.</li><li><a href=https://retrosystemsrevival.blogspot.com/2019/05/scitech-display-doctor-7.html target=_blank rel=noopener>SciTech Display Doctor 7</a>.</li><li><a href=https://winworldpc.com/product/turbo-assembler/5x target=_blank rel=noopener>Borland Turbo Assembler 5.0</a>.</li></ul><p>I downloaded and extracted all of the <code>.ISO</code> and <code>.IMG</code> files and put them in
 a <code>disks</code> subfolder in preparation for mounting into QEMU as required.</p><h2 id=creating-the-vm>Creating the VM <a href=#creating-the-vm class=anchor>🔗</a></h2><p>To create the VM I first created a 2GB <a href=https://www.linux-kvm.org/page/Qcow2 target=_blank rel=noopener>QCOW2</a> disk image named
 <code>vexation.qcow2</code> with <code>qemu-img</code>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-bash data-lang=bash><span style=display:flex><span>qemu-img create -f qcow2 vexation.qcow2 2G
@@ -85,8 +85,8 @@ install disk) use:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;b
 dance to get a better 1024x768 resolution. After that I installed Borland Turbo
 Assembler 5.0 and edited <code>autoexec.bat</code> to add it to the system <code>PATH</code> with:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:2;-o-tab-size:2;tab-size:2><code class=language-bat data-lang=bat><span style=display:flex><span><span style=color:#66d9ef>Set</span> PATH=%PATH%;C:\TASM\BIN
 </span></span></code></pre></div><p>Besides using the QEMU monitor to change the disk images the process was the
-same as in <a href=../setup>my previous setup post</a> so I won&rsquo;t bother repeating the steps
-here.</p><h2 id=networking-and-file-sharing>Networking and File-Sharing <a href=#networking-and-file-sharing class=anchor>🔗</a></h2><p>In my previous <a href=../setup>VirtualBox setup</a> I used bridge mode networking and
+same as in <a href=/2019/01/getting-set-up/>my previous setup post</a> so I won&rsquo;t bother repeating the steps
+here.</p><h2 id=networking-and-file-sharing>Networking and File-Sharing <a href=#networking-and-file-sharing class=anchor>🔗</a></h2><p>In my previous <a href=/2019/01/getting-set-up/>VirtualBox setup</a> I used bridge mode networking and
 essentially put the Win95 VM on the real network (eek). To alleviate my fears
 I would tactically enable/disable the virtual NIC to try and reduce the attack
 surface of the VM. To share files I would connect from the host machine to
