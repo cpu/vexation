@@ -8,11 +8,16 @@ aliases:
     - /kernel32-dll-exports/
 ---
 
-Welcome back! If this is your first visit to VeXation you may want to start by reading about [the project](../welcome), the [development environment](../setup), the work in progress [PE infector virus](../pe-infector-basics), or the previous post about [delta offsets](../delta-offset).
+Welcome back! If this is your first visit to VeXation you may want to start by reading about [the project][welcome], the [development environment][setup], the work in progress [PE infector virus][pe-infectors], or the previous post about [delta offsets][delta-offsets].
+
+[welcome]: /2019/01/lets-write-a-virus/
+[setup]: /2019/01/getting-set-up/
+[pe-infectors]: /2019/01/pe-file-infector-basics/
+[delta-offsets]: /2019/03/delta-offsets/
 
 # Continued Recap
 
-At the end of the [last post](../delta-offset) I completed [`pijector`](https://github.com/cpu/vexation/tree/master/pijector), an updated version of [`minijector`](https://github.com/cpu/vexation/tree/master/minijector). `pijector` is a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the infected target. The injected code is self-contained and position independent.
+At the end of the [last post][delta-offsets] I completed [`pijector`](https://github.com/cpu/vexation/tree/master/pijector), an updated version of [`minijector`](https://github.com/cpu/vexation/tree/master/minijector). `pijector` is a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the infected target. The injected code is self-contained and position independent.
 
 There are two big shortcomings with `pijector` that prevent it from being a functional virus. Recall that in generation 1+:
 
@@ -183,7 +188,7 @@ Ultimately the `jmp` causes an access violation and `calc.exe` crashes shortly a
 
 # What to do?
 
-It's clear the indirection used by generation 0 is a problem in generation 1+. The target of the `jmp` in the indirected `kernel32.dll` API call is read from an address that only made sense in generation 0. Similar to the problem of variable references across multiple sections that I tacked in the [delta offsets post](../delta-offset) the easiest solution is one of simplification: stop using the system loader to resolve `kernel32.dll` function references and stop relying on pointers in the `.idata` section.
+It's clear the indirection used by generation 0 is a problem in generation 1+. The target of the `jmp` in the indirected `kernel32.dll` API call is read from an address that only made sense in generation 0. Similar to the problem of variable references across multiple sections that I tacked in the [delta offsets post][delta-offsets] the easiest solution is one of simplification: stop using the system loader to resolve `kernel32.dll` function references and stop relying on pointers in the `.idata` section.
 
 ## Hard-coding
 
@@ -469,7 +474,7 @@ With `apifind` and `apifind2` I have an effective way to find `kernel32.dll` and
 
 For this I created a project called `apisafejector`. Like the other projects so far its code is available [in the VeXation repo](https://github.com/cpu/vexation/tree/master/apisafejector).
 
-I was able to use the code/macros from `apifind2` for `apisafejector` as-is with one small exception: all of the variable references needed to be adjusted to use the [delta offset](../delta-offset).
+I was able to use the code/macros from `apifind2` for `apisafejector` as-is with one small exception: all of the variable references needed to be adjusted to use the [delta offset][delta-offsets].
 
 For each of the Win32 APIs used by `pijector` the `apisafejector` code needed:
 

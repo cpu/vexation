@@ -8,11 +8,15 @@ aliases:
     - /delta-offset
 ---
 
-Welcome back! If this is your first visit to VeXation you may want to start by reading about [the project](../welcome), the [development environment](../setup), or the work in progress [PE infector virus](../pe-infector-basics) I'm extending in this post.
+Welcome back! If this is your first visit to VeXation you may want to start by reading about [the project][welcome], the [development environment][setup], or the work in progress [PE infector virus][pe-infector] I'm extending in this post.
+
+[welcome]: /2019/01/lets-write-a-virus/
+[setup]: /2019/01/getting-set-up/
+[pe-infector]: /2019/01/pe-file-infector-basics/
 
 # Recap
 
-At the end of the [last post](../pe-infector-basics) I completed [`minijector`](https://github.com/cpu/vexation/tree/cpu-pijector-wip/minijector), a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the to-be-infected target. There are a handful of shortcomings that prevent `minijector` from being a real functional virus. To recap, the virus code quickly falls apart for generations after 0:
+At the end of the [last post][pe-infector] I completed [`minijector`](https://github.com/cpu/vexation/tree/cpu-pijector-wip/minijector), a PE executable file infector virus that can add its code to `.exe` files found in the same directory by adding a new section to the to-be-infected target. There are a handful of shortcomings that prevent `minijector` from being a real functional virus. To recap, the virus code quickly falls apart for generations after 0:
 
 1. The virus code relies on a data section that isn't copied into the infected program. Variable references will all be broken.
 1. The way the virus code uses Win32 API functions will not work - a layer of indirection was broken and the first API function call will crash.
@@ -68,7 +72,7 @@ Since the virus code was using **two** sections (`CODE` and `DATA`) in the origi
 
 # Code is Data is Code
 
-It's tempting to think about fixing this problem by duplicating the process generation 0 uses to copy its `CODE` section to the injected `.ireloc` section and using it to also copy a `DATA` section. Overall this approach seemed like the wrong solution to me. It will be more complex managing injecting multiple sections and as mentioned in the [previous post](../pe-infector-basics) adding a new section is already pretty clumsy from an AV evasion perspective. Continuing to pile new sections into a target isn't very appealing.
+It's tempting to think about fixing this problem by duplicating the process generation 0 uses to copy its `CODE` section to the injected `.ireloc` section and using it to also copy a `DATA` section. Overall this approach seemed like the wrong solution to me. It will be more complex managing injecting multiple sections and as mentioned in the [previous post][pe-infector] adding a new section is already pretty clumsy from an AV evasion perspective. Continuing to pile new sections into a target isn't very appealing.
 
 The route I decided to follow was to remove the `DATA` section entirely and have the virus maintain and update variables inside of its existing `CODE` section. I started by copying the `minijector` folder from the [VeXation repo](https://github.com/cpu/vexation) to create [a `pijector` folder](https://github.com/cpu/vexation/tree/master/pijector) (_position independent (in)jector, get it?_). Updating all of the old `"minijector"` references in the `Makefile`, `.inc`, `.def`, and `.asm` files was enough to get started on a position independent version of `minijector`.
 

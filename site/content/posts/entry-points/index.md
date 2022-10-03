@@ -10,7 +10,7 @@ aliases:
 
 Welcome back! If this is your first visit to VeXation you may want to start at [the beginning][Start].
 
-[Start]: ../welcome
+[Start]: /2019/01/lets-write-a-virus/
 
 # Continued Recap
 
@@ -18,7 +18,7 @@ At the end of the [last post][LastPost] I had completed [`apisafejector`][apisaf
 
 Today I'll describe how I fixed this flaw and updated the virus so that the original program code is executed after propagating the infection.
 
-[LastPost]: ../kernel32-dll-exports
+[LastPost]: /2019/04/using-kernel32.dll-exports-like-a-virus/
 [apisafejector]: https://github.com/cpu/vexation/tree/master/apisafejector
 [minijector]: https://github.com/cpu/vexation/tree/master/minijector
 [pijector]: https://github.com/cpu/vexation/tree/master/pijector
@@ -79,7 +79,7 @@ Another happy side-effect of this approach is that it's easy for one generation 
 
 Crucially this means that if the virus saves the original `AddressOfEntryPoint` value of a victim program before it injects itself and stomps the entry point then it will be accessible to the injected virus code later on.
 
-[DeltaOffsets]: ../delta-offset
+[DeltaOffsets]: /2019/03/delta-offsets/
 
 ## Jumping to the original entry RVA
 

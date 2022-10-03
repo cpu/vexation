@@ -11,7 +11,7 @@ aliases:
 Welcome back! If this is your first visit to VeXation you may want to start at
 [the beginning][Start].
 
-[Start]: ../welcome
+[Start]: /2019/01/lets-write-a-virus/
 
 # Recap and Yak Shaving
 
@@ -29,8 +29,8 @@ yak shaving? In that spirit, today I'll walk through how I set up a new Windows
 95 development environment with [QEMU][QEMU]/[KVM][KVM] and configured
 file-sharing.
 
-[Prev]: ../entry-points
-[Setup]: ../setup
+[Prev]: /2019/08/dont-be-suspicious/
+[Setup]: /2019/01/getting-set-up/
 [socket3]: https://socket3.wordpress.com/2016/09/06/install-configure-windows-95-using-oracle-virtualbox/
 [NixOS]: https://nixos.org/
 [virtualbox-taint]: https://lkml.org/lkml/2011/10/6/317

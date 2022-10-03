@@ -8,7 +8,10 @@ aliases:
     - /pe-infector-basics/
 ---
 
-Welcome back! If this is your first visit to VeXation you may want to start by [reading an introduction to the project](../welcome) or [the development environment setup](../setup). In this post I'll share some of my experience starting out on my Windows 95 file infector virus.
+Welcome back! If this is your first visit to VeXation you may want to start by [reading an introduction to the project][welcome] or [the development environment setup][setup]. In this post I'll share some of my experience starting out on my Windows 95 file infector virus.
+
+[welcome]: /2019/01/lets-write-a-virus/
+[setup]: /2019/01/getting-set-up/
 
 # Objectives
 
@@ -549,7 +552,7 @@ After the enlarged view of the file is mapped it was just a matter of copying th
 The code that implements all of the above is available in the [VeXation Github
 repo](https://github.com/cpu/vexation) under [the `minijector` folder](https://github.com/cpu/vexation/tree/master/minijector). "Mini" because it isn't a finished virus, "jector" because saying "injector" over and over was driving me batty.
 
-Assuming you have [the same dev environment set up](../setup) as I do you can build the project with `make` (or with debug symbols using `make -DDEBUG`). If you want to step through an infection process run `make run` which will copy a clean `calc.exe` into the project directory and then run `td32` on the `minijector.exe` binary to let you step through the infection process.
+Assuming you have [the same dev environment set up][setup] as I do you can build the project with `make` (or with debug symbols using `make -DDEBUG`). If you want to step through an infection process run `make run` which will copy a clean `calc.exe` into the project directory and then run `td32` on the `minijector.exe` binary to let you step through the infection process.
 
 A few high level notes:
 
