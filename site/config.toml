@@ -11,7 +11,7 @@ enableEmoji = true
     style = 'monokai'
     tabwidth = 2
   [markup.goldmark.renderer]
-    unsafe = true
+    unsafe = false
   [markup.tableOfContents]
     endLevel = 2
     ordered = false
@@ -26,9 +26,10 @@ enableEmoji = true
 
 [params]
   author = 'Daniel McCarney'
-  description = 'VeXation is an on-going project by @cpu exploring retro computer virus development.'
+  description = "VeXation: writing a from-scratch Win95 virus with Borland Turbo Assembler."
   enableRSS = true
   showToc = true
   showPowerBy = false
   hiddenPostSummaryInHomePage = false
   customCSS = [ 'css/custom.css' ]
+  images = [ "/2019/01/getting-set-up/win95.get.hype.small.jpg" ]

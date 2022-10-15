@@ -50,6 +50,7 @@
         devShells.default = pkgs.mkShellNoCC {
           name = "vexation-site";
           inputsFrom = [ self'.packages.default ];
+          buildInputs = [ pkgs.lychee ];
           HUGO_THEMESDIR = self'.packages.themes;
         };
       };
