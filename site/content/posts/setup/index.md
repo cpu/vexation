@@ -103,7 +103,7 @@ To poke around in an interactive mode is even easier:
 smbclient //VMNAME/PORTAL ""
 ```
 
-The [smbclient man page](https://jlk.fjfi.cvut.cz/arch/manpages/man/smbclient.1) has plenty more information. Remember to disconnect the virtual network cable when you're done. Also note that `"VMNAME"` in the above commands is a placeholder for the name I chose to identify the computer in Windows file sharing settings, not the VirtualBox VM name.
+The [smbclient man page](https://man.archlinux.org/man/smbclient.1) has plenty more information. Remember to disconnect the virtual network cable when you're done. Also note that `"VMNAME"` in the above commands is a placeholder for the name I chose to identify the computer in Windows file sharing settings, not the VirtualBox VM name.
 
 ![Win95 Network Settings screenshot](network.settings.1.jpg "Enabling file and print sharing.")
 
