@@ -10,7 +10,7 @@ aliases:
 
 Virus writing starts with a development environment. Here's how I set up a Windows 95 VM and my development tools. If this is your first visit to VeXation you might want to start by reading the ["Welcome" post introducing the project][welcome].
 
-Before going too far I think its valuable to get into a 1995 mindset: Coolio's [Gangster's Paradise](https://www.youtube.com/watch?v=fPO76Jlnz6c) is the [#1 single](https://en.wikipedia.org/wiki/Billboard_Year-End_Hot_100_singles_of_1995). Quebec [narrowly remains a province of Canada](https://en.wikipedia.org/wiki/1995_Quebec_referendum). A pog collection was [still cool](https://www.complex.com/style/the-rarest-pogs-from-the-90s/). Netscape only recently released SSL and faces challenge from a brand new web browser called Internet Explorer. A top of the line home PC was something like a [486 with a 1 GB harddrive and a whopping 8mb of RAM](http://file.vintageadbrowser.com/pdvne4ihtorfz3.jpg).
+Before going too far I think its valuable to get into a 1995 mindset: Coolio's [Gangster's Paradise](https://www.youtube.com/watch?v=fPO76Jlnz6c) is the [#1 single](https://en.wikipedia.org/wiki/Billboard_Year-End_Hot_100_singles_of_1995). Quebec [narrowly remains a province of Canada](https://en.wikipedia.org/wiki/1995_Quebec_referendum). A pog collection was [still cool](https://www.complex.com/style/the-rarest-pogs-from-the-90s/). Netscape only recently released SSL and faces challenge from a brand new web browser called Internet Explorer. A top of the line home PC was something like a 486 with a 1 GB harddrive and a whopping 8mb of RAM.
 
 Let's take this new Windows 95 thing for a spin.
 
