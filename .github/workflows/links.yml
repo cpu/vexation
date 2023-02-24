@@ -30,7 +30,7 @@ jobs:
 
       - name: Check links
         id: lychee
-        uses: lycheeverse/lychee-action@v1.5.4
+        uses: lycheeverse/lychee-action@v1.6.1
         with:
           args: "--verbose \
                  --exclude-mail \
